@@ -6,20 +6,20 @@
 import FWCore.ParameterSet.Config as cms
 
 ########## Options ############
-isDATA = bool(False)
-isRAW = bool(True)
-isDIGI = bool(True)
-isSIM = bool(True)
-isGEN = bool(True)
+isDATA = bool(True)
+isRAW = bool(False)
+isDIGI = bool(False)
+isSIM = bool(False)
+isGEN = bool(False)
 isLocalRECO = bool(True)
-isFullRECO = bool(False)
+isFullRECO = bool(True)
 
 addMuonInfo = bool(True)
 addTrackInfo = bool(True)
 addRecHitInfo = bool(True)
 addSegmentInfo = bool(True)
 addTriggerInfo = bool(True)
-addDigiInfo = bool(True)
+addDigiInfo = bool(False)
 addTimeMonitoringInfo = bool(True)
 addCalibrationInfo = bool(True)
 
@@ -101,13 +101,14 @@ process.goodOfflinePrimaryVertices = cms.EDFilter("VertexSelector",
 process.source = cms.Source ("PoolSource",
                              # Disable duplicate event check mode because the run and event -numbers
                              # are incorrect in current Madgraph samples (Dec 16, 2008)
+                             processingMode=cms.untracked.string('RunsAndLumis'),
                              duplicateCheckMode = cms.untracked.string('noDuplicateCheck'),
                              fileNames = cms.untracked.vstring(),      
                              )
 
 if isDATA:
     process.source.fileNames = cms.untracked.vstring(
-
+        'file:/cms/data/store/data/Run2012B/SingleMu/RECO/22Jan2013-v1/20002/00351421-C271-E211-A5C9-90E6BA19A20A.root'
     
         )
 else:
@@ -130,6 +131,16 @@ process.noscraping = cms.EDFilter("FilterOutScraping",
                                   numtrack = cms.untracked.uint32(10),
                                   thresh = cms.untracked.double(0.2)
                                   )
+
+
+process.LumiCorrectionSource = cms.ESSource("LumiCorrectionSource",
+                                            #authpath=cms.untracked.string('/afs/cern.ch/cms/lumi/DB'),
+                                            #connect=cms.string('oracle://cms_orcon_adg/cms_lumi_prod')
+                                            connect=cms.string('frontier://LumiCalc/CMS_LUMI_PROD')
+                                            #normtag=cms.untracked.string('HFV2a')
+                                            #datatag=cms.untracked.string('v3')
+                                            )
+
 
 # HB + HE noise filtering
 process.load('CommonTools.RecoAlgos.HBHENoiseFilter_cfi')
