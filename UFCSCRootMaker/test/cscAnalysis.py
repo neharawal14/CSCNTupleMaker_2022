@@ -70,7 +70,7 @@ def doAnalysis():
                 layer = tree.cscSegments_recHitRecord_layer[Identifier][m]
                 nLayers+=1
             if nLayers > 0:
-                hists1D['OneSegmentChambers_nRecHitLayers'].Fill(nLayers)
+                hists1D['OneSegmentChambers_nRecHitLayers_Norm'].Fill(nLayers)
                 
 
 
@@ -82,16 +82,19 @@ def doAnalysis():
 #Declare Hists
 def defineHistos(Histos1D,Histos2D):
 
-    Histos1D['OneSegmentChambers_nRecHitLayers'] = ROOT.TH1I("1DSegments_nLayers","; N Layers; N Events", 9,-0.5,8.5) 
+    Histos1D['OneSegmentChambers_nRecHitLayers_Norm'] = ROOT.TH1F("1DSegments_nLayers","; N Layers; Fraction of Events", 9,-0.5,8.5) 
 
 #Write Hists to files
 def writeHistos(Histos1D,Histos2D):
 
     ROOT.gROOT.ProcessLine(".L tdrstyle.cc")
-
+    setTDRStyle(False)
     for key in Histos1D:
         c = ROOT.TCanvas("c","c",700,700)
         c.cd()
+        normalized = 'Norm' in key
+        if normalized:
+            Histos1D[key].Scale(1/Histos1D[key].Integral())
         Histos1D[key].Draw("HIST")
         c.SaveAs(opt.outDir+'/'+str(Histos1D[key].GetName())+'.eps')
         c.SaveAs(opt.outDir+'/'+str(Histos1D[key].GetName())+'.png')
