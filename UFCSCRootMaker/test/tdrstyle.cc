@@ -27,8 +27,8 @@ void setTDRStyle(bool force) {
 // For the canvas:
   gStyle->SetCanvasBorderMode(0);
   gStyle->SetCanvasColor(kWhite);
-  gStyle->SetCanvasDefH(600); //Height of canvas
-  gStyle->SetCanvasDefW(600); //Width of canvas
+  gStyle->SetCanvasDefH(700); //Height of canvas
+  gStyle->SetCanvasDefW(700); //Width of canvas
   gStyle->SetCanvasDefX(0);   //POsition on screen
   gStyle->SetCanvasDefY(0);
 
@@ -86,22 +86,22 @@ void setTDRStyle(bool force) {
   gStyle->SetOptStat("mr");
   gStyle->SetStatColor(kWhite);
   gStyle->SetStatFont(42);
-  gStyle->SetStatFontSize(0.04);///---> gStyle->SetStatFontSize(0.025);
+  gStyle->SetStatFontSize(0.03);///---> gStyle->SetStatFontSize(0.025);
   gStyle->SetStatTextColor(1);
   gStyle->SetStatFormat("6.4g");
-  gStyle->SetStatBorderSize(1);
-  gStyle->SetStatH(0.1);
-  gStyle->SetStatW(0.2);///---> gStyle->SetStatW(0.15);
+  gStyle->SetStatBorderSize(0);
+  gStyle->SetStatH(0.04);
+  gStyle->SetStatW(0.17);///---> gStyle->SetStatW(0.15);
 
   // gStyle->SetStatStyle(Style_t style = 1001);
-  // gStyle->SetStatX(Float_t x = 0);
-  // gStyle->SetStatY(Float_t y = 0);
+  gStyle->SetStatX(0.96);
+  gStyle->SetStatY(0.94);
 
 // Margins:
   gStyle->SetPadTopMargin(0.05);
-  gStyle->SetPadBottomMargin(0.13);
-  gStyle->SetPadLeftMargin(0.16);
-  gStyle->SetPadRightMargin(0.04);
+  gStyle->SetPadBottomMargin(0.1);
+  gStyle->SetPadLeftMargin(0.1);
+  gStyle->SetPadRightMargin(0.05);
 
 // For the Global title:
 
@@ -126,8 +126,8 @@ void setTDRStyle(bool force) {
   // gStyle->SetTitleXSize(Float_t size = 0.02); // Another way to set the size?
   // gStyle->SetTitleYSize(Float_t size = 0.02);
   gStyle->SetTitleXOffset(0.9);
-  gStyle->SetTitleYOffset(1.4);
-  // gStyle->SetTitleOffset(1.1, "Y"); // Another way to set the Offset
+  gStyle->SetTitleYOffset(1.9);
+  gStyle->SetTitleOffset(1.9, "Y"); // Another way to set the Offset
 
 // For the axis labels:
 
