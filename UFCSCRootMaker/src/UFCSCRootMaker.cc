@@ -70,15 +70,6 @@
 #include "DataFormats/L1GlobalMuonTrigger/interface/L1MuGMTReadoutRecord.h"
 #include "DataFormats/L1GlobalMuonTrigger/interface/L1MuGMTReadoutCollection.h"
 #include "DataFormats/Common/interface/TriggerResults.h"
-/*
-#include "DataFormats/PatCandidates/interface/Electron.h"
-#include "DataFormats/PatCandidates/interface/Photon.h"
-#include "DataFormats/PatCandidates/interface/Muon.h"
-#include "DataFormats/PatCandidates/interface/Tau.h"
-#include "DataFormats/PatCandidates/interface/Jet.h"
-#include "DataFormats/PatCandidates/interface/MET.h"
-#include "DataFormats/PatCandidates/interface/TriggerEvent.h"
-*/
 
 #include "EventFilter/CSCRawToDigi/interface/CSCDCCEventData.h"
 #include "EventFilter/CSCRawToDigi/interface/CSCDCCExaminer.h"
@@ -169,7 +160,7 @@ private:
   void doMuons(edm::Handle<reco::MuonCollection> muons, edm::Handle<reco::TrackCollection> saMuons, const reco::Vertex *&PV);
   void doTracks(edm::Handle<reco::TrackCollection> genTracks);
   void doRecHits(edm::Handle<CSCRecHit2DCollection> recHits, edm::Handle<edm::PSimHitContainer> simHits, edm::Handle<reco::TrackCollection> saMuons, 
-		 edm::ESHandle<CSCGeometry> cscGeom, const edm::Event& iEvent);
+		 edm::Handle<reco::MuonCollection> muons, edm::ESHandle<CSCGeometry> cscGeom, const edm::Event& iEvent);
   float getthisSignal(const CSCStripDigiCollection& stripdigis, CSCDetId idRH, int centerStrip);
   void doSegments(edm::Handle<CSCSegmentCollection> cscSegments, edm::ESHandle<CSCGeometry> cscGeom);
   void doTrigger(edm::Handle<L1MuGMTReadoutCollection> pCollection, edm::Handle<edm::TriggerResults> hlt);
@@ -248,10 +239,12 @@ private:
   std::multimap<CSCDetId , CSCRecHit2D> AllRechits;
   std::multimap<CSCDetId , CSCRecHit2D> SegRechits;
   std::multimap<CSCDetId , CSCRecHit2D> NonAssociatedRechits;
-  std::map<CSCRecHit2D,float,ltrh> distRHmap;
+  //std::map<CSCRecHit2D , float,ltrh> distRHmap;
   std::map<int, int>   m_single_wire_layer;
   std::map<int, std::vector<int> >   m_wire_hvsegm;
   std::vector<int>     nmbhvsegm;
+  std::vector<float> distRHvec;
+
 
   // Muons
   int       muons_nMuons;
@@ -284,7 +277,7 @@ private:
   double    recHits2D_SumQ[10000], recHits2D_SumQSides[10000];
   double    recHits2D_Time[10000];
   double    recHits2D_globalX[10000], recHits2D_globalY[10000], recHits2D_ADCSignal[10000];
-  int       recHits2D_belongsToSaMuon[10000];
+  int       recHits2D_belongsToSaMuon[10000], recHits2D_belongsToMuon[10000];
   int       recHits2D_ID_chamberSerial[10000], recHits2D_ID_ringSerial[10000];
   double    recHits2D_simHit_localX[10000], recHits2D_simHit_localY[10000];
   int       recHits2D_simHit_particleTypeID[10000];
@@ -346,19 +339,19 @@ private:
   // ALCTs
   int alct_nAlcts;
   int alct_BX[10000], alct_fullBX[10000], alct_ID_chamber[10000], alct_ID_endcap[10000], alct_ID_station[10000];
-  int alct_ID_ring[10000], alct_ID_layer[10000], alct_ID_chamberID[10000];
+  int alct_ID_ring[10000], alct_ID_layer[10000], alct_ID_chamberID[10000], alct_ID_chamberSerial[10000], alct_ID_ringSerial[10000];
 
   // CLCTs
   int clct_nClcts;
   int clct_BX[10000], clct_fullBX[10000], clct_ID_chamber[10000], clct_ID_endcap[10000], clct_ID_station[10000];
-  int clct_ID_ring[10000], clct_ID_layer[10000], clct_ID_chamberID[10000];
+  int clct_ID_ring[10000], clct_ID_layer[10000], clct_ID_chamberID[10000], clct_ID_chamberSerial[10000], clct_ID_ringSerial[10000];
 
   // Correlated LCTs
   int correlatedLct_nLcts;
   int correlatedLct_BX[10000], correlatedLct_trkNumber[10000], correlatedLct_quality[10000], correlatedLct_keyWG[10000];
   int correlatedLct_strip[10000], correlatedLct_pattern[10000], correlatedLct_bend[10000], correlatedLct_CLCTPattern[10000];
   int correlatedLct_ID_chamber[10000], correlatedLct_ID_ring[10000], correlatedLct_ID_station[10000];
-  int correlatedLct_ID_endcap[10000], correlatedLct_ID_layer[10000];
+  int correlatedLct_ID_endcap[10000], correlatedLct_ID_layer[10000], correlatedLct_ID_chamberSerial[10000], correlatedLct_ID_ringSerial[10000];
   unsigned int correlatedLct_cscID[10000], correlatedLct_BX0[10000], correlatedLct_syncErr[10000];
 
   // TMB
@@ -562,7 +555,7 @@ void UFCSCRootMaker::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
 
    if(addMuons && isFullRECO) doMuons(muons,saMuons,PV);
    if(addTracks && isFullRECO) doTracks(genTracks);
-   if(addRecHits &&  (isFullRECO || isLocalRECO)) doRecHits(recHits,simHits,saMuons,cscGeom,iEvent);
+   if(addRecHits &&  (isFullRECO || isLocalRECO)) doRecHits(recHits,simHits,saMuons,muons,cscGeom,iEvent);
    if(addSegments && (isFullRECO || isLocalRECO)) doSegments(cscSegments,cscGeom);
    if(addTrigger && (isFullRECO || isLocalRECO || isRAW)) doTrigger(pCollection,hlt);
    if(addDigis && isDIGI)
@@ -627,6 +620,9 @@ void UFCSCRootMaker::endRun(edm::Run const&, edm::EventSetup const&)
 // ------------ method called when starting to processes a luminosity block  ------------
 void UFCSCRootMaker::beginLuminosityBlock(edm::LuminosityBlock const& lumi, edm::EventSetup const& iSetup)
 {
+  using namespace edm;
+  using namespace std;
+
   //https://twiki.cern.ch/twiki/bin/viewauth/CMS/LumiCalc
   edm::Handle<LumiSummary> l;
   if(isDATA && isFullRECO)
@@ -865,8 +861,7 @@ UFCSCRootMaker::doTracks(edm::Handle<reco::TrackCollection> genTracks)
 
 
 void
-UFCSCRootMaker::doRecHits(edm::Handle<CSCRecHit2DCollection> recHits, edm::Handle<edm::PSimHitContainer> simHits, edm::Handle<reco::TrackCollection> saMuons, 
-			  edm::ESHandle<CSCGeometry> cscGeom, const edm::Event& iEvent)
+UFCSCRootMaker::doRecHits(edm::Handle<CSCRecHit2DCollection> recHits, edm::Handle<edm::PSimHitContainer> simHits, edm::Handle<reco::TrackCollection> saMuons,                          edm::Handle<reco::MuonCollection> muons, edm::ESHandle<CSCGeometry> cscGeom, const edm::Event& iEvent)
 {
 
   edm::Handle<CSCStripDigiCollection> myStrips;
@@ -909,6 +904,7 @@ UFCSCRootMaker::doRecHits(edm::Handle<CSCRecHit2DCollection> recHits, edm::Handl
      
      //Check association with sa muons
      recHits2D_belongsToSaMuon[counter] = -1;
+     recHits2D_belongsToMuon[counter] = -1;
 
      if(isFullRECO)
        {
@@ -963,6 +959,58 @@ UFCSCRootMaker::doRecHits(edm::Handle<CSCRecHit2DCollection> recHits, edm::Handl
 	     
 	     saMuCounter++;
 	   }
+
+
+	 int muCounter = 0;
+	 xTolerance = 0.05;
+	 yTolerance = 0.10;
+	 for(reco::MuonCollection::const_iterator muon = muons->begin(); muon != muons->end(); muon++ ) 
+	   {
+	     bool found = false;
+	     if (muon->outerTrack().isNull()) continue;
+	     for (trackingRecHit_iterator hit = muon->outerTrack()->recHitsBegin(); hit != muon->outerTrack()->recHitsEnd(); hit++ ) 
+	       {	     
+		 const DetId detId( (*hit)->geographicalId() );
+		 if (detId.det() == DetId::Muon) 
+		   {
+		     if (detId.subdetId() == MuonSubdetId::CSC) 
+		       {
+			 CSCDetId cscId(detId.rawId());
+			 LocalPoint rhitlocalMu = (*hit)->localPosition();
+			 
+			 //cout << saMuCounter << endl
+			 //<< "x : " << rhitlocal.x() << "  " << rhitlocalSA.x() << endl
+			 //<< "y : " << rhitlocal.y() << "  " << rhitlocalSA.y() << endl
+			 //<< "ec: " << idrec.endcap() << "  " << cscId.endcap() << endl
+			 //<< "rg: " << idrec.ring() << "  " << cscId.ring() << endl
+			 //<< "cb: " << idrec.chamber() << "  " << cscId.chamber() << endl
+			 //<< "lr: " << idrec.layer() << "  " << cscId.layer() << endl
+			 //<< "st: " << idrec.station() << "  " << cscId.station() << endl
+			 //<< "found : " << found << endl;
+			 
+			 if( (fabs(rhitlocal.x() - rhitlocalMu.x()) < fabs(xTolerance*rhitlocal.x()) || fabs(rhitlocal.x() - rhitlocalMu.x()) < fabs(xTolerance*rhitlocalMu.x())) && !found)
+			   {
+			     if( (fabs(rhitlocal.y() - rhitlocalMu.y()) < fabs(yTolerance*rhitlocal.y()) || fabs(rhitlocal.y() - rhitlocalMu.y()) < fabs(yTolerance*rhitlocalMu.y())) && !found)
+			       {
+				 if(idrec.endcap() == cscId.endcap() && idrec.ring() == cscId.ring() && idrec.station() == cscId.station() && !found)
+				   {
+				     if(idrec.chamber() == cscId.chamber() && !found)// && idrec.layer() == cscId.layer() && !found)
+				       {
+					 recHits2D_belongsToMuon[counter] = muCounter;
+					 found = true;
+				       } 
+				   }
+			       }
+			   }
+			 
+		       }
+		   }
+	       }
+	     
+	     muCounter++;
+	   }
+
+
        }
 
      // Find the charge associated with this hit
@@ -1136,7 +1184,7 @@ UFCSCRootMaker::doSegments(edm::Handle<CSCSegmentCollection> cscSegments, edm::E
      cscSegments_segmentTime[counter] = -1;
      // try to get the CSC recHits that contribute to this segment.
      std::vector<CSCRecHit2D> theseRecHits = (*dSiter).specificRecHits();
-     if (nRH >= 4 )
+     if (nRH >= 1 )
        {
 	 //Store the recHit times of a segment in a vector for later sorting
 	 vector<float> non_zero;	
@@ -1280,16 +1328,17 @@ void UFCSCRootMaker::doNonAssociatedRecHits(edm::Handle<CSCSegmentCollection> cs
     if(!foundmatch)
       {
 	NonAssociatedRechits.insert(std::pair<CSCDetId , CSCRecHit2D>(idRH,allRHiter->second));
-	distRHmap.insert(make_pair(allRHiter->second,dclose));
+	distRHvec.push_back(dclose);
       }
   }
-
-  counter=0;
-  for(std::map<CSCRecHit2D,float,ltrh>::iterator iter =  distRHmap.begin();iter != distRHmap.end(); ++iter){
-    nonAssocRecHits_distToGoodRH[counter] = iter->second;
+  
+  counter = 0;
+  for(unsigned int kk = 0; kk < distRHvec.size(); kk++){
+    nonAssocRecHits_distToGoodRH[kk] = distRHvec[kk];
     counter++;
   }
   int tmpCounterRH = counter;
+  
 
   counter=0;
   for(std::multimap<CSCDetId , CSCRecHit2D>::iterator iter =  NonAssociatedRechits.begin();iter != NonAssociatedRechits.end(); ++iter){
@@ -1306,7 +1355,7 @@ void UFCSCRootMaker::doNonAssociatedRecHits(edm::Handle<CSCSegmentCollection> cs
     LocalPoint rhitlocal = (iter->second).localPosition();  
     float xreco = rhitlocal.x();
     float yreco = rhitlocal.y();
-
+    
     // Find the strip containing this hit
     int centerid    =  (iter->second).nStrips()/2;
     int centerStrip =  (iter->second).channels(centerid);
@@ -1440,11 +1489,13 @@ void UFCSCRootMaker::doNonAssociatedRecHits(edm::Handle<CSCSegmentCollection> cs
     	   
    }
   assocRecHits_nAssocRH = counter;
+  
+  distRHvec.clear();
+  AllRechits.clear();
+  SegRechits.clear();
+  NonAssociatedRechits.clear();
 
-   distRHmap.clear();
-   AllRechits.clear();
-   SegRechits.clear();
-   NonAssociatedRechits.clear();
+
 
 }
 
@@ -1761,6 +1812,8 @@ void UFCSCRootMaker::doLCTDigis( edm::Handle<CSCALCTDigiCollection> alcts, edm::
 	alct_ID_ring[n_alcts] = idALCT.ring();
 	alct_ID_layer[n_alcts] = idALCT.layer();
 	alct_ID_chamberID[n_alcts] = idALCT.chamberId();
+	alct_ID_chamberSerial[n_alcts] = chamberSerial(idALCT);
+	alct_ID_ringSerial[n_alcts] = ringSerial(idALCT);
 	n_alcts++;
       }
     }
@@ -1792,11 +1845,13 @@ void UFCSCRootMaker::doLCTDigis( edm::Handle<CSCALCTDigiCollection> alcts, edm::
         clct_ID_ring[n_clcts] = idCLCT.ring();
         clct_ID_layer[n_clcts] = idCLCT.layer();
         clct_ID_chamberID[n_clcts] = idCLCT.chamberId();
+	clct_ID_chamberSerial[n_clcts] = chamberSerial(idCLCT);
+        clct_ID_ringSerial[n_clcts] = ringSerial(idCLCT);
 	n_clcts++;
       }
     }
   }
-  
+  clct_nClcts = n_clcts;  
   // *************************************************
   // *** CorrelatedLCT Digis *************************
   // *************************************************
@@ -1825,6 +1880,8 @@ void UFCSCRootMaker::doLCTDigis( edm::Handle<CSCALCTDigiCollection> alcts, edm::
 	correlatedLct_ID_station[n_correlatedlcts] = idLCT.station();
 	correlatedLct_ID_endcap[n_correlatedlcts] = idLCT.endcap();
 	correlatedLct_ID_layer[n_correlatedlcts] = idLCT.layer();
+        correlatedLct_ID_chamberSerial[n_correlatedlcts] = chamberSerial(idLCT);
+        correlatedLct_ID_ringSerial[n_correlatedlcts] = ringSerial(idLCT);
 
 	n_correlatedlcts++;
       }
@@ -2451,6 +2508,7 @@ UFCSCRootMaker::bookTree(TTree *tree)
   tree->Branch("recHits2D_globalX",  recHits2D_globalX,   "recHits2D_globalX[recHits2D_nRecHits2D]/D");
   tree->Branch("recHits2D_globalY",  recHits2D_globalY,   "recHits2D_globalY[recHits2D_nRecHits2D]/D");
   tree->Branch("recHits2D_belongsToSaMuon",  recHits2D_belongsToSaMuon,   "recHits2D_belongsToSaMuon[recHits2D_nRecHits2D]/I");
+  tree->Branch("recHits2D_belongsToMuon",  recHits2D_belongsToMuon,   "recHits2D_belongsToMuon[recHits2D_nRecHits2D]/I");
   tree->Branch("recHits2D_ID_chamberSerial",  recHits2D_ID_chamberSerial,   "recHits2D_ID_chamberSerial[recHits2D_nRecHits2D]/I");
   tree->Branch("recHits2D_ID_ringSerial",  recHits2D_ID_ringSerial,   "recHits2D_ID_ringSerial[recHits2D_nRecHits2D]/I");
   tree->Branch("recHits2D_simHit_particleTypeID",  recHits2D_simHit_particleTypeID,   "recHits2D_simHit_particleTypeID[recHits2D_nRecHits2D]/I");
@@ -2606,6 +2664,8 @@ UFCSCRootMaker::bookTree(TTree *tree)
   tree->Branch("alct_ID_chamber", alct_ID_chamber,"alct_ID_chamber[alct_nAlcts]/I");
   tree->Branch("alct_ID_endcap", alct_ID_endcap,"alct_ID_endcap[alct_nAlcts]/I");
   tree->Branch("alct_ID_station", alct_ID_station,"alct_ID_station[alct_nAlcts]/I");
+  tree->Branch("alct_ID_chamberSerial", alct_ID_chamberSerial,"alct_ID_chamberSerial[alct_nAlcts]/I");
+  tree->Branch("alct_ID_ringSerial", alct_ID_ringSerial,"alct_ID_ringSerial[alct_nAlcts]/I");
  
   // CLCTs
   tree->Branch("clct_nClcts",&clct_nClcts,"clct_nClcts/I");
@@ -2617,6 +2677,8 @@ UFCSCRootMaker::bookTree(TTree *tree)
   tree->Branch("clct_ID_chamber", clct_ID_chamber,"clct_ID_chamber[clct_nClcts]/I");
   tree->Branch("clct_ID_endcap", clct_ID_endcap,"clct_ID_endcap[clct_nClcts]/I");
   tree->Branch("clct_ID_station", clct_ID_station,"clct_ID_station[clct_nClcts]/I");
+  tree->Branch("clct_ID_chamberSerial", clct_ID_chamberSerial,"clct_ID_chamberSerial[clct_nClcts]/I");
+  tree->Branch("clct_ID_ringSerial", clct_ID_ringSerial,"clct_ID_ringSerial[clct_nClcts]/I");
 
   // Correlated LCTs
   tree->Branch("correlatedLct_nLcts",&correlatedLct_nLcts,"correlatedLct_nLcts/I");
@@ -2636,6 +2698,8 @@ UFCSCRootMaker::bookTree(TTree *tree)
   tree->Branch("correlatedLct_ID_station", correlatedLct_ID_station,"correlatedLct_ID_station[correlatedLct_nLcts]/I");
   tree->Branch("correlatedLct_ID_endcap", correlatedLct_ID_endcap,"correlatedLct_ID_endcap[correlatedLct_nLcts]/I");
   tree->Branch("correlatedLct_ID_layer", correlatedLct_ID_layer,"correlatedLct_ID_layer[correlatedLct_nLcts]/I");
+  tree->Branch("correlatedLct_ID_chamberSerial", correlatedLct_ID_chamberSerial,"correlatedLct_ID_chamberSerial[correlatedLct_nLcts]/I");
+  tree->Branch("correlatedLct_ID_ringSerial", correlatedLct_ID_ringSerial,"correlatedLct_ID_ringSerial[correlatedLct_nLcts]/I");
 
   // TMB
   tree->Branch("tmb_nTmb",&tmb_nTmb,"tmb_nTmb/I");
