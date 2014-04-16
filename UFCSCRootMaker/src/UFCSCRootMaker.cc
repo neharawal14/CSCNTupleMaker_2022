@@ -11,7 +11,7 @@
 // Original Author:  Matthew Snowball
 //         Created:  Tue Jun 18 10:26:09 EDT 2013
 //
-// Last Updated: Feb. 18, 2014
+// Last Updated: Apr. 16, 2014
 //
 
 
@@ -164,8 +164,8 @@ private:
   float getthisSignal(const CSCStripDigiCollection& stripdigis, CSCDetId idRH, int centerStrip);
   void doSegments(edm::Handle<CSCSegmentCollection> cscSegments, edm::ESHandle<CSCGeometry> cscGeom);
   void doTrigger(edm::Handle<L1MuGMTReadoutCollection> pCollection, edm::Handle<edm::TriggerResults> hlt);
-  void doStripDigis(edm::Handle<CSCStripDigiCollection> strips);
-  void doWireDigis(edm::Handle<CSCWireDigiCollection> wires);
+  void doStripDigis(edm::Handle<CSCStripDigiCollection> strips, edm::ESHandle<CSCGeometry> cscGeom);
+  void doWireDigis(edm::Handle<CSCWireDigiCollection> wires, edm::ESHandle<CSCGeometry> cscGeom);
   void doCompTiming(const CSCComparatorDigiCollection& compars);
   void doLCTDigis(edm::Handle<CSCALCTDigiCollection> alcts, edm::Handle<CSCCLCTDigiCollection> clcts,
 		  edm::Handle<CSCCorrelatedLCTDigiCollection> correlatedlcts,
@@ -178,6 +178,9 @@ private:
   int ringSerial( CSCDetId id );
   int getWidth(const CSCStripDigiCollection& stripdigis, CSCDetId idRH, int centerStrip);
   void doGasGain(const CSCWireDigiCollection& wirecltn,  const CSCStripDigiCollection&   strpcltn, const CSCRecHit2DCollection& rechitcltn);  
+  bool withinSensitiveRegion(LocalPoint localPos, const std::array<const float, 4> & layerBounds, int station, int ring, float shiftFromEdge, float shiftFromDeadZone);
+
+
 
   // register to the TFileService 
   edm::Service<TFileService> fs;  
@@ -268,6 +271,14 @@ private:
   double    tracks_px[2000], tracks_py[2000], tracks_pz[2000];
   double    tracks_pt[2000], tracks_p[2000], tracks_eta[2000], tracks_phi[2000];
 
+  // SimHits
+  int simHits_nSimHits;
+  int simHits_particleType[10000];
+  double simHits_localX[10000], simHits_localY[10000], simHits_globalX[10000], simHits_globalY[10000];
+  int    simHits_ID_endcap[10000], simHits_ID_ring[10000], simHits_ID_station[10000], simHits_ID_chamber[10000], simHits_ID_layer[10000];
+  int    simHits_ID_chamberSerial[10000], simHits_ID_ringSerial[10000], simHits_ID_processType[10000];
+  double simHits_momentum[10000], simHits_phi[10000], simHits_theta[10000];
+
   // CSCRecHits2D
   int       recHits2D_nRecHits2D;
   int       recHits2D_ID_endcap[10000], recHits2D_ID_ring[10000], recHits2D_ID_station[10000], recHits2D_ID_chamber[10000], recHits2D_ID_layer[10000];
@@ -280,7 +291,12 @@ private:
   int       recHits2D_belongsToSaMuon[10000], recHits2D_belongsToMuon[10000];
   int       recHits2D_ID_chamberSerial[10000], recHits2D_ID_ringSerial[10000];
   double    recHits2D_simHit_localX[10000], recHits2D_simHit_localY[10000];
-  int       recHits2D_simHit_particleTypeID[10000];
+  int       recHits2D_simHit_particleTypeID[10000], recHits2D_nearestStrip[10000], recHits2D_nearestWire[10000], recHits2D_nearestWireGroup[10000];
+  double    recHits2D_localStripWireIntersectionX[10000], recHits2D_localStripWireIntersectionY[10000], recHits2D_localStripWireGroupIntersectionX[10000];
+  double    recHits2D_localStripWireGroupIntersectionY[10000], recHits2D_stripWidthAtHit[10000];
+  double    recHits2D_positionWithinStrip[10000], recHits2D_wireTime[10000];
+  int       recHits2D_hitWire[10000], recHits2D_wgroupsBX[10000], recHits2D_nWireGroups[10000];
+
   
   // CSCSegments
   int       cscSegments_nSegments;
@@ -323,13 +339,15 @@ private:
   int firedStripDigis_nStripDigis;
   int firedStripDigis_ID_endcap[10000], firedStripDigis_ID_station[10000], firedStripDigis_ID_layer[10000];
   int firedStripDigis_ID_chamber[10000], firedStripDigis_ID_strip[10000], firedStripDigis_ID_ring[10000];
-  double firedStripDigis_ADCNoise[10000];
+  int firedStripDigis_tbinMax[10000];
+  double firedStripDigis_ADCTotal[10000], firedStripDigis_ADCMax[10000], firedStripDigis_localX[10000];
 
   // Wire Digis
   int firedWireDigis_nWireDigis;
   int firedWireDigis_ID_endcap[10000], firedWireDigis_ID_station[10000], firedWireDigis_ID_layer[10000], firedWireDigis_chamberSerial[10000];
   int firedWireDigis_ID_chamber[10000], firedWireDigis_ID_wire[10000], firedWireDigis_timeBin[10000], firedWireDigis_ID_ring[10000];
   int firedWireDigis_AFEB[10000], firedWireDigis_numberWireTimeBins[10000];
+  double firedWireDigis_localY[10000];
 
   // Comparator Digis
   int comparatorDigis_nDigis;
@@ -560,8 +578,8 @@ void UFCSCRootMaker::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
    if(addTrigger && (isFullRECO || isLocalRECO || isRAW)) doTrigger(pCollection,hlt);
    if(addDigis && isDIGI)
      {
-       doStripDigis(strips);
-       doWireDigis(wires);
+       doStripDigis(strips, cscGeom);
+       doWireDigis(wires, cscGeom);
        doCompTiming(*compars);
        if(addTimeMonitoring) doLCTDigis(alcts, clcts, correlatedlcts, pCollection, cscGeom,iSetup, iEvent);
        if(isLocalRECO) doGasGain(*wires, *strips, *recHits);
@@ -1044,10 +1062,25 @@ UFCSCRootMaker::doRecHits(edm::Handle<CSCRecHit2DCollection> recHits, edm::Handl
 	 int centerStrip =  (*dRHIter).channels(centerid);
 	 float  rHsignal = getthisSignal(*myStrips, idrec, centerStrip);
 	 recHits2D_ADCSignal[counter] = rHsignal;
-       }
+       }	 
+	 
+     CSCLayerGeometry *thegeom = const_cast<CSCLayerGeometry*>(csclayer->geometry());
+     
+     recHits2D_nearestStrip[counter] = thegeom->nearestStrip(rhitlocal);
+     recHits2D_nearestWire[counter] = thegeom->nearestWire(rhitlocal);
+     recHits2D_nearestWireGroup[counter] = thegeom->wireGroup(recHits2D_nearestWire[counter]);
+     recHits2D_localStripWireIntersectionX[counter] = thegeom->stripWireIntersection(thegeom->nearestStrip(rhitlocal),thegeom->nearestWire(rhitlocal)).x();
+     recHits2D_localStripWireIntersectionY[counter] = thegeom->stripWireIntersection(thegeom->nearestStrip(rhitlocal),thegeom->nearestWire(rhitlocal)).y();
+     recHits2D_localStripWireGroupIntersectionX[counter] = thegeom->stripWireGroupIntersection(thegeom->nearestStrip(rhitlocal),thegeom->wireGroup(recHits2D_nearestWire[counter])).x();
+     recHits2D_localStripWireGroupIntersectionY[counter] = thegeom->stripWireGroupIntersection(thegeom->nearestStrip(rhitlocal),thegeom->wireGroup(recHits2D_nearestWire[counter])).y();
+     recHits2D_stripWidthAtHit[counter] = thegeom->stripPitch(rhitlocal);
 
-
-
+     recHits2D_positionWithinStrip[counter] = (*dRHIter).positionWithinStrip();
+     recHits2D_nWireGroups[counter] =  (*dRHIter).nWireGroups();
+     recHits2D_wireTime[counter] =(*dRHIter).wireTime();
+     recHits2D_hitWire[counter] = (*dRHIter).hitWire();
+     recHits2D_wgroupsBX[counter] = (*dRHIter).wgroupsBX();
+     
      recHits2D_simHit_localX[counter] = -999;
      recHits2D_simHit_localY[counter] = -999;
      recHits2D_simHit_particleTypeID[counter] = -1;
@@ -1055,8 +1088,8 @@ UFCSCRootMaker::doRecHits(edm::Handle<CSCRecHit2DCollection> recHits, edm::Handl
      if (isSIM)
        {
 
-	 float mindiffX   = 99;
-	 float mindiffY   = 10;
+	 float mindiff = 1000;
+	 float mindiffX = 99;
 	 // If MC, find closest muon simHit to check resolution:
 	 edm::PSimHitContainer::const_iterator dSHsimIter;
 	 for (dSHsimIter = simHits->begin(); dSHsimIter != simHits->end(); dSHsimIter++){
@@ -1068,11 +1101,16 @@ UFCSCRootMaker::doRecHits(edm::Handle<CSCRecHit2DCollection> recHits, edm::Handl
 	     LocalPoint sHitlocal = (*dSHsimIter).localPosition();
 	     // Now we need to make reasonably sure that this simHit is
 	     // responsible for this recHit:
-	     if ((sHitlocal.x() - rhitlocal.x()) < mindiffX && (sHitlocal.y() - rhitlocal.y()) < mindiffY)
+	     if ( sqrt((sHitlocal.x() - rhitlocal.x())*(sHitlocal.x() - rhitlocal.x())
+		       + (sHitlocal.y() - rhitlocal.y())*(sHitlocal.y() - rhitlocal.y())) < mindiff 
+		  && (sHitlocal.x() - rhitlocal.x()) < mindiffX 
+		  && (sHitlocal.y() - rhitlocal.y()) < 10.0)
 	       {
 		 recHits2D_simHit_localX[counter] = sHitlocal.x();
 		 recHits2D_simHit_localY[counter] = sHitlocal.y();
 		 recHits2D_simHit_particleTypeID[counter] = (*dSHsimIter).particleType();
+		 mindiff = sqrt((sHitlocal.x() - rhitlocal.x())*(sHitlocal.x() - rhitlocal.x()) 
+				+ (sHitlocal.y() - rhitlocal.y())*(sHitlocal.y() - rhitlocal.y()));
 		 mindiffX = (sHitlocal.x() - rhitlocal.x());
 	       }
 	   }
@@ -1083,6 +1121,46 @@ UFCSCRootMaker::doRecHits(edm::Handle<CSCRecHit2DCollection> recHits, edm::Handl
      counter++;
    }
    recHits2D_nRecHits2D = counter;
+
+
+   
+   counter = 0;
+   //SimHits
+   if (isSIM)
+     {
+       edm::PSimHitContainer::const_iterator dSHsimIter;
+       for (dSHsimIter = simHits->begin(); dSHsimIter != simHits->end(); dSHsimIter++)
+	 {
+	   // Get DetID for this simHit:
+	   CSCDetId sId = (CSCDetId)(*dSHsimIter).detUnitId();
+	   LocalPoint sHitlocal = (*dSHsimIter).localPosition();
+
+	   simHits_particleType[counter] = (*dSHsimIter).particleType();
+	   simHits_localX[counter] = sHitlocal.x();
+	   simHits_localY[counter] = sHitlocal.y();
+	   
+	   const CSCLayer* shlayer = cscGeom->layer( sId );
+	   GlobalPoint shitglobal= shlayer->toGlobal(sHitlocal);
+	   simHits_globalX[counter]   =  shitglobal.x();
+	   simHits_globalY[counter]   =  shitglobal.y();
+	  
+	   simHits_ID_endcap[counter]  = sId.endcap();
+	   simHits_ID_ring[counter]    = sId.ring();
+	   simHits_ID_station[counter] = sId.station();
+	   simHits_ID_chamber[counter] = sId.chamber();
+	   simHits_ID_layer[counter]   = sId.layer();
+	   simHits_ID_chamberSerial[counter] = chamberSerial(sId);
+	   simHits_ID_ringSerial[counter] = ringSerial(sId);
+
+	   simHits_ID_processType[counter] = (*dSHsimIter).processType();
+	   simHits_momentum[counter] = (*dSHsimIter).pabs();
+	   simHits_phi[counter] = (*dSHsimIter).phiAtEntry();
+	   simHits_theta[counter] = (*dSHsimIter).thetaAtEntry();
+	   
+	 }
+     }
+   simHits_nSimHits = counter;
+   
 
 }
 
@@ -1631,44 +1709,55 @@ UFCSCRootMaker::doTrigger(edm::Handle<L1MuGMTReadoutCollection> pCollection, edm
 
 
 void 
-UFCSCRootMaker::doStripDigis(edm::Handle<CSCStripDigiCollection> strips)
+UFCSCRootMaker::doStripDigis(edm::Handle<CSCStripDigiCollection> strips, edm::ESHandle<CSCGeometry> cscGeom)
 {
   int nStripsFired = 0;
   for (CSCStripDigiCollection::DigiRangeIterator dSDiter=strips->begin(); dSDiter!=strips->end(); dSDiter++) {
     CSCDetId id = (CSCDetId)(*dSDiter).first;
+    const CSCLayer* csclayer = cscGeom->layer( id );
+    CSCLayerGeometry *thegeom = const_cast<CSCLayerGeometry*>(csclayer->geometry());
+
     std::vector<CSCStripDigi>::const_iterator stripIter = (*dSDiter).second.first;
     std::vector<CSCStripDigi>::const_iterator lStrip = (*dSDiter).second.second;
-    for( ; stripIter != lStrip; ++stripIter) {
-      int myStrip = stripIter->getStrip();
-      std::vector<int> myADCVals = stripIter->getADCCounts();
-      bool thisStripFired = false;
-      float thisPedestal = 0.5*(float)(myADCVals[0]+myADCVals[1]);
-      float threshold = 13.3 ;
-      float diff = 0.;
-      float thisSignal = (1./6)*(myADCVals[2]+myADCVals[3]+myADCVals[4]+myADCVals[5]+myADCVals[6]+myADCVals[7]);
-
-      if(id.station() == 1 && id.ring() == 4)
-	{
-	  if(myStrip <= 16) myStrip += 64; 
+    for( ; stripIter != lStrip; ++stripIter) 
+      {
+	int myStrip = stripIter->getStrip();
+	std::vector<int> myADCVals = stripIter->getADCCounts();
+	bool thisStripFired = false;
+	float thisPedestal = 0.5*(float)(myADCVals[0]+myADCVals[1]);
+	float threshold = 13.3 ;
+	float diff = 0.;
+	float thisSignal = (1./6)*(myADCVals[2]+myADCVals[3]+myADCVals[4]+myADCVals[5]+myADCVals[6]+myADCVals[7]);
+	
+	if(id.station() == 1 && id.ring() == 4)
+	  {
+	    if(myStrip <= 16) myStrip += 64; 
+	  }
+	
+	int tracker = 0;
+	for (unsigned int iCount = 0; iCount < myADCVals.size(); iCount++) {
+	  diff = (float)myADCVals[iCount]-thisPedestal;
+	  if (diff > threshold) { thisStripFired = true; }
+	if (iCount > 0 && diff > (myADCVals[iCount-1]-thisPedestal)) {tracker = iCount;}
+	
 	}
+	if (thisStripFired) {
+	  
+	  firedStripDigis_ID_endcap[nStripsFired] = id.endcap();
+	  firedStripDigis_ID_ring[nStripsFired] = id.ring();
+	  firedStripDigis_ID_station[nStripsFired] = id.station();
+	  firedStripDigis_ID_layer[nStripsFired] = id.layer();
+	  firedStripDigis_ID_chamber[nStripsFired] = id.chamber();
+	  firedStripDigis_ID_strip[nStripsFired] = myStrip;
+	  float ADC = thisSignal - thisPedestal;
+	  firedStripDigis_ADCTotal[nStripsFired] = ADC;
+	  firedStripDigis_ADCMax[nStripsFired] = myADCVals[tracker];
+	  firedStripDigis_tbinMax[nStripsFired] = tracker;
+	  firedStripDigis_localX[nStripsFired] = thegeom->xOfStrip(myStrip);
 
-      for (unsigned int iCount = 0; iCount < myADCVals.size(); iCount++) {
-        diff = (float)myADCVals[iCount]-thisPedestal;
-        if (diff > threshold) { thisStripFired = true; }
+	  nStripsFired++;
+	}
       }
-      if (thisStripFired) {
-
-	firedStripDigis_ID_endcap[nStripsFired] = id.endcap();
-	firedStripDigis_ID_ring[nStripsFired] = id.ring();
-	firedStripDigis_ID_station[nStripsFired] = id.station();
-	firedStripDigis_ID_layer[nStripsFired] = id.layer();
-	firedStripDigis_ID_chamber[nStripsFired] = id.chamber();
-	firedStripDigis_ID_strip[nStripsFired] = myStrip;
-	float ADC = thisSignal - thisPedestal;
-        firedStripDigis_ADCNoise[nStripsFired] = ADC;
-	nStripsFired++;
-      }
-    }
 
   } // end strip loop
   
@@ -1679,12 +1768,14 @@ UFCSCRootMaker::doStripDigis(edm::Handle<CSCStripDigiCollection> strips)
 
 
 void 
-UFCSCRootMaker::doWireDigis(edm::Handle<CSCWireDigiCollection> wires)
+UFCSCRootMaker::doWireDigis(edm::Handle<CSCWireDigiCollection> wires, edm::ESHandle<CSCGeometry> cscGeom)
 {
 
   int nWireGroupsTotal = 0;
   for (CSCWireDigiCollection::DigiRangeIterator dWDiter=wires->begin(); dWDiter!=wires->end(); dWDiter++) {
     CSCDetId id = (CSCDetId)(*dWDiter).first;
+    const CSCLayer* csclayer = cscGeom->layer( id );
+    CSCLayerGeometry *thegeom = const_cast<CSCLayerGeometry*>(csclayer->geometry());
     std::vector<CSCWireDigi>::const_iterator wireIter = (*dWDiter).second.first;
     std::vector<CSCWireDigi>::const_iterator lWire = (*dWDiter).second.second;
     for( ; wireIter != lWire; ++wireIter) {
@@ -1699,6 +1790,8 @@ UFCSCRootMaker::doWireDigis(edm::Handle<CSCWireDigiCollection> wires)
       firedWireDigis_ID_wire[nWireGroupsTotal] = myWire;
       firedWireDigis_timeBin[nWireGroupsTotal] = myTBin;
       firedWireDigis_chamberSerial[nWireGroupsTotal] = chamberSerial(id);
+      firedWireDigis_localY[nWireGroupsTotal] = thegeom->yOfWireGroup(myWire);
+
 
       //AFEB Timing
       int nmbwiretbin = wireIter->getTimeBinsOn().size();
@@ -1864,7 +1957,6 @@ void UFCSCRootMaker::doLCTDigis( edm::Handle<CSCALCTDigiCollection> alcts, edm::
 	
 	correlatedLct_BX[n_correlatedlcts] = (*digiIt).getBX();
 	correlatedLct_BX0[n_correlatedlcts] = (*digiIt).getBX0();
-	correlatedLct_strip[n_correlatedlcts] = (*digiIt).getBX();
 	correlatedLct_trkNumber[n_correlatedlcts] = (*digiIt).getTrknmb();
 	correlatedLct_quality[n_correlatedlcts] = (*digiIt).getQuality();
 	correlatedLct_strip[n_correlatedlcts] = (*digiIt).getStrip();
@@ -2455,6 +2547,107 @@ int UFCSCRootMaker::getWidth(const CSCStripDigiCollection& stripdigis, CSCDetId 
 
 
 
+bool UFCSCRootMaker::withinSensitiveRegion(LocalPoint localPos, const std::array<const float, 4> & layerBounds, int station, int ring, float shiftFromEdge, float shiftFromDeadZone){
+//---- check if it is in a good local region (sensitive area - geometrical and HV boundaries excluded) 
+  bool pass = false;
+
+  float y_center = 0.;
+  double yUp = layerBounds[3] + y_center;
+  double yDown = - layerBounds[3] + y_center;
+  double xBound1Shifted = layerBounds[0] - shiftFromEdge;//
+  double xBound2Shifted = layerBounds[1] - shiftFromEdge;//
+  double lineSlope = (yUp - yDown)/(xBound2Shifted-xBound1Shifted);
+  double lineConst = yUp - lineSlope*xBound2Shifted;
+  double yBorder =  lineSlope*abs(localPos.x()) + lineConst;
+      
+  //bool withinChamberOnly = false;// false = "good region"; true - boundaries only
+  std::vector <float> deadZoneCenter(6);
+  float cutZone = shiftFromDeadZone;//cm
+  //---- hardcoded... not good
+  if(station>1 && station<5){
+    if(2==ring){
+      deadZoneCenter[0]= -162.48 ;
+      deadZoneCenter[1] = -81.8744;
+      deadZoneCenter[2] = -21.18165;
+      deadZoneCenter[3] = 39.51105;
+      deadZoneCenter[4] = 100.2939;
+      deadZoneCenter[5] = 160.58;
+      
+      if(localPos.y() >yBorder &&
+	 ((localPos.y()> deadZoneCenter[0] + cutZone && localPos.y()< deadZoneCenter[1] - cutZone) ||
+	  (localPos.y()> deadZoneCenter[1] + cutZone && localPos.y()< deadZoneCenter[2] - cutZone) ||
+	  (localPos.y()> deadZoneCenter[2] + cutZone && localPos.y()< deadZoneCenter[3] - cutZone) ||
+	  (localPos.y()> deadZoneCenter[3] + cutZone && localPos.y()< deadZoneCenter[4] - cutZone) ||
+	  (localPos.y()> deadZoneCenter[4] + cutZone && localPos.y()< deadZoneCenter[5] - cutZone))){
+	pass = true;
+      }
+    }
+    else if(1==ring){
+      if(2==station){
+	deadZoneCenter[0]= -95.80 ;
+	deadZoneCenter[1] = -27.47;
+	deadZoneCenter[2] = 33.67;
+	deadZoneCenter[3] = 90.85;
+        }
+      else if(3==station){
+	deadZoneCenter[0]= -89.305 ;
+	deadZoneCenter[1] = -39.705;
+	deadZoneCenter[2] = 20.195;
+	deadZoneCenter[3] = 77.395;
+      }
+      else if(4==station){
+	deadZoneCenter[0]= -75.645;
+	deadZoneCenter[1] = -26.055;
+	deadZoneCenter[2] = 23.855;
+	deadZoneCenter[3] = 70.575;
+      }
+      if(localPos.y() >yBorder &&
+	 ((localPos.y()> deadZoneCenter[0] + cutZone && localPos.y()< deadZoneCenter[1] - cutZone) ||
+	  (localPos.y()> deadZoneCenter[1] + cutZone && localPos.y()< deadZoneCenter[2] - cutZone) ||
+	  (localPos.y()> deadZoneCenter[2] + cutZone && localPos.y()< deadZoneCenter[3] - cutZone))){
+	pass = true;
+      }
+    }
+  }
+  else if(1==station){
+    if(3==ring){
+      deadZoneCenter[0]= -83.155 ;
+      deadZoneCenter[1] = -22.7401;
+      deadZoneCenter[2] = 27.86665;
+      deadZoneCenter[3] = 81.005;
+      if(localPos.y() > yBorder &&
+	 ((localPos.y()> deadZoneCenter[0] + cutZone && localPos.y()< deadZoneCenter[1] - cutZone) ||
+	  (localPos.y()> deadZoneCenter[1] + cutZone && localPos.y()< deadZoneCenter[2] - cutZone) ||
+	  (localPos.y()> deadZoneCenter[2] + cutZone && localPos.y()< deadZoneCenter[3] - cutZone))){
+	pass = true;
+      }
+    }
+    else if(2==ring){
+      deadZoneCenter[0]= -86.285 ;
+      deadZoneCenter[1] = -32.88305;
+      deadZoneCenter[2] = 32.867423;
+      deadZoneCenter[3] = 88.205;
+      if(localPos.y() > (yBorder) &&
+	 ((localPos.y()> deadZoneCenter[0] + cutZone && localPos.y()< deadZoneCenter[1] - cutZone) ||
+	  (localPos.y()> deadZoneCenter[1] + cutZone && localPos.y()< deadZoneCenter[2] - cutZone) ||
+	  (localPos.y()> deadZoneCenter[2] + cutZone && localPos.y()< deadZoneCenter[3] - cutZone))){
+	pass = true;
+      }
+    }
+    else{
+      deadZoneCenter[0]= -81.0;
+      deadZoneCenter[1] = 81.0;
+      if(localPos.y() > (yBorder) &&
+	 (localPos.y()> deadZoneCenter[0] + cutZone && localPos.y()< deadZoneCenter[1] - cutZone )){
+	pass = true;
+      }
+    }
+  }
+  return pass;
+}
+
+
+
 void 
 UFCSCRootMaker::bookTree(TTree *tree) 
 {
@@ -2488,6 +2681,26 @@ UFCSCRootMaker::bookTree(TTree *tree)
   tree->Branch("tracks_eta",  tracks_eta,  "tracks_eta[tracks_nTracks]/D");
   tree->Branch("tracks_phi",  tracks_phi,  "tracks_phi[tracks_nTracks]/D");
 
+  // SimHits
+  tree->Branch("simHits_nSimHits", &simHits_nSimHits, "simHits_nSimHits/I");
+  tree->Branch("simHits_particleType", simHits_particleType,  "simHits_particleType[simHits_nSimHits]/I");
+  tree->Branch("simHits_localX", simHits_localX,  "simHits_localX[simHits_nSimHits]/D");
+  tree->Branch("simHits_localY", simHits_localY,  "simHits_localY[simHits_nSimHits]/D");
+  tree->Branch("simHits_globalX", simHits_globalX,  "simHits_globalX[simHits_nSimHits]/D");
+  tree->Branch("simHits_globalY", simHits_globalY,  "simHits_globalY[simHits_nSimHits]/D");
+  tree->Branch("simHits_ID_endcap", simHits_ID_endcap,  "simHits_ID_endcap[simHits_nSimHits]/I");
+  tree->Branch("simHits_ID_ring", simHits_ID_ring,  "simHits_ID_ring[simHits_nSimHits]/I");
+  tree->Branch("simHits_ID_station", simHits_ID_station,  "simHits_ID_station[simHits_nSimHits]/I");
+  tree->Branch("simHits_ID_chamber", simHits_ID_chamber,  "simHits_ID_chamber[simHits_nSimHits]/I");
+  tree->Branch("simHits_ID_layer", simHits_ID_layer,  "simHits_ID_layer[simHits_nSimHits]/I");
+  tree->Branch("simHits_ID_chamberSerial", simHits_ID_chamberSerial,  "simHits_ID_chamberSerial[simHits_nSimHits]/I");
+  tree->Branch("simHits_ID_ringSerial", simHits_ID_ringSerial,  "simHits_ID_ringSerial[simHits_nSimHits]/I");
+  tree->Branch("simHits_ID_processType", simHits_ID_processType,  "simHits_ID_processType[simHits_nSimHits]/I");
+  tree->Branch("simHits_momentum", simHits_momentum,  "simHits_momentum[simHits_nSimHits]/D");
+  tree->Branch("simHits_phi", simHits_phi,  "simHits_phi[simHits_nSimHits]/D");
+  tree->Branch("simHits_theta", simHits_theta,  "simHits_theta[simHits_nSimHits]/D");
+
+
   // CSCRecHits2D
   tree->Branch("recHits2D_nRecHits2D", &recHits2D_nRecHits2D,"recHits2D_nRecHits2D/I");
   tree->Branch("recHits2D_ID_endcap",  recHits2D_ID_endcap,   "recHits2D_ID_endcap[recHits2D_nRecHits2D]/I");
@@ -2515,6 +2728,20 @@ UFCSCRootMaker::bookTree(TTree *tree)
   tree->Branch("recHits2D_simHit_localX",  recHits2D_simHit_localX,   "recHits2D_simHit_localX[recHits2D_nRecHits2D]/D");
   tree->Branch("recHits2D_simHit_localY",  recHits2D_simHit_localY,   "recHits2D_simHit_localY[recHits2D_nRecHits2D]/D");
   tree->Branch("recHits2D_ADCSignal",  recHits2D_ADCSignal,   "recHits2D_ADCSignal[recHits2D_nRecHits2D]/D");
+  tree->Branch("recHits2D_nearestStrip",  recHits2D_nearestStrip,   "recHits2D_nearestStrip[recHits2D_nRecHits2D]/I");
+  tree->Branch("recHits2D_nearestWire",  recHits2D_nearestWire,   "recHits2D_nearestWire[recHits2D_nRecHits2D]/I");
+  tree->Branch("recHits2D_nearestWireGroup",  recHits2D_nearestWireGroup,   "recHits2D_nearestWireGroup[recHits2D_nRecHits2D]/I");
+  tree->Branch("recHits2D_localStripWireIntersectionX",  recHits2D_localStripWireIntersectionX,   "recHits2D_localStripWireIntersectionX[recHits2D_nRecHits2D]/D");
+  tree->Branch("recHits2D_localStripWireIntersectionY",  recHits2D_localStripWireIntersectionY,   "recHits2D_localStripWireIntersectionY[recHits2D_nRecHits2D]/D");
+  tree->Branch("recHits2D_localStripWireGroupIntersectionX",  recHits2D_localStripWireGroupIntersectionX,   "recHits2D_localStripWireGroupIntersectionX[recHits2D_nRecHits2D]/D");
+  tree->Branch("recHits2D_localStripWireGroupIntersectionY",  recHits2D_localStripWireGroupIntersectionY,   "recHits2D_localStripWireGroupIntersectionY[recHits2D_nRecHits2D]/D");
+  tree->Branch("recHits2D_stripWidthAtHit",  recHits2D_stripWidthAtHit,   "recHits2D_stripWidthAtHit[recHits2D_nRecHits2D]/D");
+
+  tree->Branch("recHits2D_positionWithinStrip",  recHits2D_positionWithinStrip,   "recHits2D_positionWithinStrip[recHits2D_nRecHits2D]/D");
+  tree->Branch("recHits2D_wireTime",  recHits2D_wireTime,   "recHits2D_wireTime[recHits2D_nRecHits2D]/D");
+  tree->Branch("recHits2D_hitWire",  recHits2D_hitWire,   "recHits2D_hitWire[recHits2D_nRecHits2D]/I");
+  tree->Branch("recHits2D_wgroupsBX",  recHits2D_wgroupsBX,   "recHits2D_wgroupsBX[recHits2D_nRecHits2D]/I");
+  tree->Branch("recHits2D_nWireGroups",  recHits2D_nWireGroups,   "recHits2D_nWireGroups[recHits2D_nRecHits2D]/I");
 
   // CSCSegments
   tree->Branch("cscSegments_nSegments", &cscSegments_nSegments,"cscSegments_nSegments/I");
@@ -2626,7 +2853,10 @@ UFCSCRootMaker::bookTree(TTree *tree)
   tree->Branch("firedStripDigis_ID_layer",firedStripDigis_ID_layer,"firedStripDigis_ID_layer[firedStripDigis_nStripDigis]/I");
   tree->Branch("firedStripDigis_ID_strip",firedStripDigis_ID_strip,"firedStripDigis_ID_strip[firedStripDigis_nStripDigis]/I");
   tree->Branch("firedStripDigis_ID_ring",firedStripDigis_ID_ring,"firedStripDigis_ID_ring[firedStripDigis_nStripDigis]/I");
-  tree->Branch("firedStripDigis_ADCNoise",firedStripDigis_ADCNoise,"firedStripDigis_ADCNoise[firedStripDigis_nStripDigis]/D");
+  tree->Branch("firedStripDigis_ADCTotal",firedStripDigis_ADCTotal,"firedStripDigis_ADCTotal[firedStripDigis_nStripDigis]/D");
+  tree->Branch("firedStripDigis_ADCMax",firedStripDigis_ADCMax,"firedStripDigis_ADCMax[firedStripDigis_nStripDigis]/D");
+  tree->Branch("firedStripDigis_tbinMax",firedStripDigis_tbinMax,"firedStripDigis_tbinMax[firedStripDigis_nStripDigis]/I");
+  tree->Branch("firedStripDigis_localX",firedStripDigis_localX,"firedStripDigis_localX[firedStripDigis_nStripDigis]/D");
 
   //Wire Digis
   tree->Branch("firedWireDigis_nWireDigis",&firedWireDigis_nWireDigis,"firedWireDigis_nWireDigis/I");
@@ -2640,6 +2870,7 @@ UFCSCRootMaker::bookTree(TTree *tree)
   tree->Branch("firedWireDigis_chamberSerial", firedWireDigis_chamberSerial,"firedWireDigis_chamberSerial[firedWireDigis_nWireDigis]/I");
   tree->Branch("firedWireDigis_numberWireTimeBins", firedWireDigis_numberWireTimeBins,"firedWireDigis_numberWireTimeBins[firedWireDigis_nWireDigis]/I");
   tree->Branch("firedWireDigis_AFEB", firedWireDigis_AFEB,"firedWireDigis_AFEB[firedWireDigis_nWireDigis]/I");
+  tree->Branch("firedWireDigis_localY", firedWireDigis_localY,"firedWireDigis_localY[firedWireDigis_nWireDigis]/D");
 
 
 
@@ -2791,6 +3022,10 @@ UFCSCRootMaker::bookTree(TTree *tree)
 
 
 }
+
+
+
+
 
 
 
