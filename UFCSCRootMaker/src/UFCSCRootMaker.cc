@@ -1157,6 +1157,7 @@ UFCSCRootMaker::doRecHits(edm::Handle<CSCRecHit2DCollection> recHits, edm::Handl
 	   simHits_phi[counter] = (*dSHsimIter).phiAtEntry();
 	   simHits_theta[counter] = (*dSHsimIter).thetaAtEntry();
 	   
+	   counter++;
 	 }
      }
    simHits_nSimHits = counter;
