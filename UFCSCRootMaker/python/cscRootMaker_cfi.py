@@ -2,10 +2,12 @@ import FWCore.ParameterSet.Config as cms
 
 cscRootMaker = cms.EDAnalyzer('UFCSCRootMaker',
   muonSrc = cms.untracked.InputTag('muons'),
-  vertexSrc = cms.untracked.InputTag('goodOfflinePrimaryVertices'),
+  vertexSrc = cms.untracked.InputTag('offlinePrimaryVertices'),
   standAloneMuonsSrc = cms.untracked.InputTag('standAloneMuons'),
   cscRecHitTagSrc = cms.untracked.InputTag('csc2DRecHits'),
   cscSegTagSrc = cms.untracked.InputTag('cscSegments'),
+  dtSegTagSrc = cms.untracked.InputTag('dt4DSegments'),
+  selSegTagSrc = cms.untracked.InputTag('SelectedSegments'),
   level1TagSrc = cms.untracked.InputTag('gtDigis'),
   hltTagSrc = cms.untracked.InputTag('TriggerResults', '', 'HLT'),
   stripDigiTagSrc = cms.untracked.InputTag('simMuonCSCDigis', 'MuonCSCStripDigi'),
