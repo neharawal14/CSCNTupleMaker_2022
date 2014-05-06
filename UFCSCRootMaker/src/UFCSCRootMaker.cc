@@ -11,7 +11,7 @@
 // Original Author:  Matthew Snowball
 //         Created:  Tue Jun 18 10:26:09 EDT 2013
 //
-// Last Updated: Apr. 16, 2014
+// Last Updated: Apr. 30, 2014
 //
 
 
@@ -101,6 +101,12 @@
 #include "Geometry/CommonDetUnit/interface/GlobalTrackingGeometry.h"
 #include "Geometry/Records/interface/GlobalTrackingGeometryRecord.h"
 
+#include "DataFormats/TrackingRecHit/interface/TrackingRecHit.h"
+#include "TrackingTools/TransientTrack/interface/TransientTrack.h"
+#include "RecoMuon/TransientTrackingRecHit/interface/MuonTransientTrackingRecHit.h"
+#include "RecoMuon/TrackingTools/interface/MuonServiceProxy.h"
+#include "RecoMuon/TrackingTools/interface/SegmentsTrackAssociator.h"
+
 
 #include "SimDataFormats/TrackingHit/interface/PSimHitContainer.h"
 
@@ -157,7 +163,8 @@ private:
   virtual void endLuminosityBlock(edm::LuminosityBlock const&, edm::EventSetup const&);
 
 
-  void doMuons(edm::Handle<reco::MuonCollection> muons, edm::Handle<reco::TrackCollection> saMuons, const reco::Vertex *&PV);
+  void doMuons(edm::Handle<reco::MuonCollection> muons, edm::Handle<reco::TrackCollection> saMuons, edm::Handle<CSCSegmentCollection> cscSegments, edm::Handle<CSCRecHit2DCollection> recHits,
+	       const reco::Vertex *&PV, const edm::Event& iEvent, const edm::EventSetup& iSetup, edm::ESHandle<GlobalTrackingGeometry> theGeom, edm::ESHandle<CSCGeometry> cscGeom);
   void doTracks(edm::Handle<reco::TrackCollection> genTracks);
   void doRecHits(edm::Handle<CSCRecHit2DCollection> recHits, edm::Handle<edm::PSimHitContainer> simHits, edm::Handle<reco::TrackCollection> saMuons, 
 		 edm::Handle<reco::MuonCollection> muons, edm::ESHandle<CSCGeometry> cscGeom, const edm::Event& iEvent);
@@ -179,8 +186,13 @@ private:
   int getWidth(const CSCStripDigiCollection& stripdigis, CSCDetId idRH, int centerStrip);
   void doGasGain(const CSCWireDigiCollection& wirecltn,  const CSCStripDigiCollection&   strpcltn, const CSCRecHit2DCollection& rechitcltn);  
   bool withinSensitiveRegion(LocalPoint localPos, const std::array<const float, 4> & layerBounds, int station, int ring, float shiftFromEdge, float shiftFromDeadZone);
+  MuonTransientTrackingRecHit::MuonRecHitContainer findMuonSegments(edm::ESHandle<GlobalTrackingGeometry> theTrackingGeometry, const reco::Track& Track, 
+								    edm::Handle<CSCSegmentCollection> cscSegments, edm::ESHandle<CSCGeometry> cscGeom);
 
-
+  std::vector<CSCSegment> findMuonSegments(edm::ESHandle<GlobalTrackingGeometry> theTrackingGeometry, const reco::Track& Track, 
+					   edm::Handle<CSCSegmentCollection> cscSegments, edm::Handle<CSCRecHit2DCollection> recHits, 
+					   edm::ESHandle<CSCGeometry> cscGeom);
+  
 
   // register to the TFileService 
   edm::Service<TFileService> fs;  
@@ -195,6 +207,8 @@ private:
   edm::InputTag standAloneMuonsSrc;
   edm::InputTag cscRecHitTagSrc;
   edm::InputTag cscSegTagSrc;
+  edm::InputTag dtSegTagSrc;
+  edm::InputTag selSegTagSrc;
   edm::InputTag level1TagSrc;
   edm::InputTag hltTagSrc;
 
@@ -206,6 +220,9 @@ private:
   edm::InputTag corrlctDigiTagSrc;
   edm::InputTag simHitTagSrc;
   edm::InputTag fedRawTagSrc;
+
+  SegmentsTrackAssociator* theSegmentsAssociator;
+  edm::ParameterSet parameters;
 
   bool isFullRECO, isLocalRECO, isGEN, isSIM, isRAW, isDIGI, isDATA;
   bool addMuons, addTracks, addRecHits, addSegments, addTrigger, addDigis, addTimeMonitoring;
@@ -253,9 +270,9 @@ private:
   int       muons_nMuons;
   bool      muons_isStandAloneMuon[1000], muons_isGlobalMuon[1000], muons_isPFMuon[1000], muons_isCaloMuon[1000], muons_isTrackerMuon[1000];
   bool      muons_isEnergyValid[1000];
-  int       muons_numberOfChambers[1000], muons_numberOfMatches[1000];
+  int       muons_numberOfChambers[1000], muons_numberOfMatches[1000], muons_numberOfSegments[1000];
   double    muons_calEnergyTower[1000], muons_calEnergyEm[1000], muons_calEnergyHad[1000];
-  int       muons_charge[1000];
+  int       muons_charge[1000], muons_nRecHits[1000];
   double    muons_energy[1000],  muons_px[1000], muons_py[1000], muons_pz[1000], muons_pt[1000];
   double    muons_et[1000], muons_p[1000], muons_phi[1000], muons_eta[1000], muons_theta[1000];
   double    muons_vx[1000], muons_vy[1000], muons_vz[1000];
@@ -264,6 +281,14 @@ private:
   double    muons_isoNH04[1000], muons_isoCH04[1000], muons_isoPhot04[1000], muons_isoPU04[1000];
   double    muons_isoNH03[1000], muons_isoCH03[1000], muons_isoPhot03[1000], muons_isoPU03[1000];
   double    muons_dxy[1000], muons_dz[1000];
+  std::vector< std::vector<int> > muons_cscSegmentRecord_nRecHits;
+  std::vector< std::vector<int> > muons_cscSegmentRecord_ring;
+  std::vector< std::vector<int> > muons_cscSegmentRecord_station;
+  std::vector< std::vector<int> > muons_cscSegmentRecord_chamber;
+  std::vector< std::vector<int> > muons_cscSegmentRecord_endcap;
+  std::vector< std::vector<double> > muons_cscSegmentRecord_localY;
+  std::vector< std::vector<double> > muons_cscSegmentRecord_localX;
+
 
   // Tracks
   int       tracks_nTracks;
@@ -306,11 +331,11 @@ private:
   int       cscSegments_nDOF[10000];
   int       cscSegments_ID_endcap[10000], cscSegments_ID_ring[10000], cscSegments_ID_station[10000], cscSegments_ID_chamber[10000];
   double    cscSegments_distToIP[10000], cscSegments_segmentTime[10000];
-  std::vector< std::vector<double> > cscSegments_recHitRecord_endcap;
-  std::vector< std::vector<double> > cscSegments_recHitRecord_ring;
-  std::vector< std::vector<double> > cscSegments_recHitRecord_station;
-  std::vector< std::vector<double> > cscSegments_recHitRecord_chamber;
-  std::vector< std::vector<double> > cscSegments_recHitRecord_layer;
+  std::vector< std::vector<int> > cscSegments_recHitRecord_endcap;
+  std::vector< std::vector<int> > cscSegments_recHitRecord_ring;
+  std::vector< std::vector<int> > cscSegments_recHitRecord_station;
+  std::vector< std::vector<int> > cscSegments_recHitRecord_chamber;
+  std::vector< std::vector<int> > cscSegments_recHitRecord_layer;
   std::vector< std::vector<double> > cscSegments_recHitRecord_localY;
   std::vector< std::vector<double> > cscSegments_recHitRecord_localX;
   int       cscSegments_ID_chamberSerial[10000], cscSegments_ID_ringSerial[10000];
@@ -424,6 +449,8 @@ UFCSCRootMaker::UFCSCRootMaker(const edm::ParameterSet& iConfig) :
   standAloneMuonsSrc(iConfig.getUntrackedParameter<edm::InputTag>("standAloneMuonsSrc")),
   cscRecHitTagSrc(iConfig.getUntrackedParameter<edm::InputTag>("cscRecHitTagSrc")),
   cscSegTagSrc(iConfig.getUntrackedParameter<edm::InputTag>("cscSegTagSrc")),
+  dtSegTagSrc(iConfig.getUntrackedParameter<edm::InputTag>("dtSegTagSrc")),
+  selSegTagSrc(iConfig.getUntrackedParameter<edm::InputTag>("selSegTagSrc")),
   level1TagSrc(iConfig.getUntrackedParameter<edm::InputTag>("level1TagSrc")),
   hltTagSrc(iConfig.getUntrackedParameter<edm::InputTag>("hltTagSrc")),
   stripDigiTagSrc(iConfig.getUntrackedParameter<edm::InputTag>("stripDigiTagSrc")),
@@ -455,6 +482,18 @@ UFCSCRootMaker::UFCSCRootMaker(const edm::ParameterSet& iConfig) :
   counter = 0;
 
   tree = new TTree("Events","Events");
+  
+  parameters = iConfig;
+
+  edm::InputTag segmentsDt = dtSegTagSrc;
+  edm::InputTag segmentsCSC = cscSegTagSrc;
+  edm::InputTag SelectedSegments = selSegTagSrc;
+  parameters.addUntrackedParameter<edm::InputTag>("segmentsDt",segmentsDt);
+  parameters.addUntrackedParameter<edm::InputTag>("segmentsCSC",segmentsCSC);
+  parameters.addUntrackedParameter<edm::InputTag>("SelectedSegments",SelectedSegments);
+
+  //const edm::ParameterSet SegmentsTrackAssociatorParameters = parameters.getParameter<edm::ParameterSet>("SegmentsTrackAssociatorParameters");
+  theSegmentsAssociator = new SegmentsTrackAssociator(parameters);//may have changed in CMSSW7XY
 
 }
 
@@ -505,6 +544,9 @@ void UFCSCRootMaker::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
 
    edm::ESHandle<CSCGeometry> cscGeom;
    iSetup.get<MuonGeometryRecord>().get(cscGeom);   
+
+   edm::ESHandle<GlobalTrackingGeometry> geometry_;
+   iSetup.get<GlobalTrackingGeometryRecord>().get(geometry_);
    
    edm::Handle<CSCRecHit2DCollection> recHits;
    if(isLocalRECO || isFullRECO) iEvent.getByLabel(cscRecHitTagSrc,recHits);
@@ -571,7 +613,7 @@ void UFCSCRootMaker::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
 
 
 
-   if(addMuons && isFullRECO) doMuons(muons,saMuons,PV);
+   if(addMuons && isFullRECO) doMuons(muons,saMuons,cscSegments,recHits,PV,iEvent,iSetup,geometry_,cscGeom);
    if(addTracks && isFullRECO) doTracks(genTracks);
    if(addRecHits &&  (isFullRECO || isLocalRECO)) doRecHits(recHits,simHits,saMuons,muons,cscGeom,iEvent);
    if(addSegments && (isFullRECO || isLocalRECO)) doSegments(cscSegments,cscGeom);
@@ -599,7 +641,15 @@ void UFCSCRootMaker::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
    cscSegments_recHitRecord_localY.clear();
    cscSegments_recHitRecord_localX.clear();
 
+   muons_cscSegmentRecord_nRecHits.clear();
+   muons_cscSegmentRecord_ring.clear();
+   muons_cscSegmentRecord_station.clear();
+   muons_cscSegmentRecord_chamber.clear();
+   muons_cscSegmentRecord_endcap.clear();
+   muons_cscSegmentRecord_localY.clear();
+   muons_cscSegmentRecord_localX.clear();
    
+
 
 #ifdef THIS_IS_AN_EVENT_EXAMPLE
    Handle<ExampleData> pIn;
@@ -678,6 +728,8 @@ void UFCSCRootMaker::fillDescriptions(edm::ConfigurationDescriptions& descriptio
   desc.addUntracked<InputTag>("standAloneMuonsSrc",edm::InputTag("standAloneMuons"))->setComment("StandAlone Muons Input Tag. default: standAloneMuons");
   desc.addUntracked<InputTag>("cscRecHitTagSrc",edm::InputTag("csc2DRecHits"))->setComment("2D RecHits Input Tag. default: csc2DRecHits");
   desc.addUntracked<InputTag>("cscSegTagSrc",edm::InputTag("cscSegments"))->setComment("Segments Input Tag. default: cscSegments");
+  desc.addUntracked<InputTag>("dtSegTagSrc",edm::InputTag("dt4DSegments"))->setComment("Segments Input Tag. default: dt4DSegments");
+  desc.addUntracked<InputTag>("selSegTagSrc",edm::InputTag("SelectedSegments"))->setComment("Segments Input Tag. default: SelectedSegments");
   desc.addOptionalUntracked<InputTag>("level1TagSrc",edm::InputTag("gtDigis"))->setComment("L1 Digi Input Tag. default: gtDigis");
   desc.addOptionalUntracked<InputTag>("hltTagSrc",edm::InputTag("TriggerResults::HLT"))->setComment("HLT Input Tag. default: TriggerResults::HLT");
   desc.addOptionalUntracked<InputTag>("stripDigiTagSrc",edm::InputTag("simMuonCSCDigis:MuonCSCStripDigi"))->setComment("Strip Digi Input Tag. default: simMuonCSCDigis:MuonCSCStripDigi");
@@ -708,7 +760,8 @@ void UFCSCRootMaker::fillDescriptions(edm::ConfigurationDescriptions& descriptio
 
 
 
-void UFCSCRootMaker::doMuons(edm::Handle<reco::MuonCollection> muons, edm::Handle<reco::TrackCollection> saMuons, const reco::Vertex *&PV)
+void UFCSCRootMaker::doMuons(edm::Handle<reco::MuonCollection> muons, edm::Handle<reco::TrackCollection> saMuons, edm::Handle<CSCSegmentCollection> cscSegments, edm::Handle<CSCRecHit2DCollection> recHits,
+			     const reco::Vertex *&PV, const edm::Event& iEvent, const edm::EventSetup& iSetup, edm::ESHandle<GlobalTrackingGeometry> theGeom, edm::ESHandle<CSCGeometry> cscGeom)
 {
 
   //Muons
@@ -741,8 +794,11 @@ void UFCSCRootMaker::doMuons(edm::Handle<reco::MuonCollection> muons, edm::Handl
       muons_vx[counter] = mu->vx();
       muons_vy[counter] = mu->vy();
       muons_vz[counter] = mu->vz();
-      
-      
+
+      std::vector<int> cscSegmentRecord_nRecHits, cscSegmentRecord_ring, cscSegmentRecord_station, cscSegmentRecord_chamber, cscSegmentRecord_endcap;
+      std::vector<double> cscSegmentRecord_localY, cscSegmentRecord_localX, cscSegmentRecord_theta;
+
+           
       if (mu->isGlobalMuon())
 	{
 	  muons_globalTrackNormalizedChi2[counter] = (double)mu->globalTrack()->chi2()/mu->globalTrack()->ndof();
@@ -758,6 +814,53 @@ void UFCSCRootMaker::doMuons(edm::Handle<reco::MuonCollection> muons, edm::Handl
 	  muons_trackNumberOfLostHits[counter] = mu->track()->numberOfLostHits();  
 	  muons_dxy[counter] = mu->track()->dxy(PV->position());
 	  muons_dz[counter] = mu->track()->dz(PV->position());
+
+	  muons_nRecHits[counter] = -1;
+	  muons_numberOfSegments[counter] = 0;
+	  int tmpRHCounter = 0, tmpSegCounter = 0;
+	  
+	  if(mu->outerTrack().isNonnull() && (mu->isStandAloneMuon() || mu->isGlobalMuon()) )
+	    {
+	      /*
+	      //MuonTransientTrackingRecHit::MuonRecHitContainer segments = theSegmentsAssociator->associate(iEvent, iSetup, *mu->outerTrack());
+	      MuonTransientTrackingRecHit::MuonRecHitContainer segments = findMuonSegments(theGeom, *mu->outerTrack(), cscSegments, cscGeom);
+	      for (MuonTransientTrackingRecHit::MuonRecHitContainer::const_iterator segment=segments.begin(); segment!=segments.end(); segment++) 
+		{
+		  
+		  DetId id = (*segment)->geographicalId();
+		  if (id.det() == 2 DetId::Muon && id.subdetId() == 2MuonSubdetId::CSC )
+		    {
+		    tmpSegCounter++;
+		    //CSCDetId cscId  = (CSCDetId)(*segment).cscDetId();
+		    cscSegmentRecord_nRecHits.push_back((*segment)->recHits().size());
+		    //cout << cscSegmentRecord_nRecHits[tmpSegCounter-1] << endl;
+		    tmpRHCounter += (*segment)->recHits().size();
+		    
+		    }
+		  
+		}
+	      */
+
+	      std::vector<CSCSegment> mySavedSegments = findMuonSegments(theGeom, *mu->outerTrack(), cscSegments, recHits, cscGeom);
+	      for (int j = 0; j < (int)mySavedSegments.size(); j++)
+		{
+		  CSCDetId cscSegId  = (CSCDetId)mySavedSegments[j].cscDetId();
+		  tmpSegCounter++;
+		  cscSegmentRecord_nRecHits.push_back(mySavedSegments[j].recHits().size());
+		  cscSegmentRecord_ring.push_back(cscSegId.ring());
+		  cscSegmentRecord_station.push_back(cscSegId.station());
+		  cscSegmentRecord_chamber.push_back(cscSegId.chamber());
+		  cscSegmentRecord_endcap.push_back(cscSegId.endcap());
+		  LocalPoint localP = mySavedSegments[j].localPosition();
+		  cscSegmentRecord_localY.push_back(localP.y());
+		  cscSegmentRecord_localX.push_back(localP.x());
+		  tmpRHCounter += mySavedSegments[j].recHits().size();
+		}
+	      
+	    }
+	  //cout << tmpSegCounter << "   " << tmpRHCounter << endl;
+	  muons_nRecHits[counter] = tmpRHCounter;
+	  muons_numberOfSegments[counter] = tmpSegCounter;
 	}
       else
 	{
@@ -779,10 +882,19 @@ void UFCSCRootMaker::doMuons(edm::Handle<reco::MuonCollection> muons, edm::Handl
 	  muons_isoPU04[counter] = mu->pfIsolationR04().sumPUPt;
 	}
       counter++;
-      
+
+      muons_cscSegmentRecord_nRecHits.push_back(cscSegmentRecord_nRecHits);
+      muons_cscSegmentRecord_ring.push_back(cscSegmentRecord_ring); 
+      muons_cscSegmentRecord_station.push_back(cscSegmentRecord_station);
+      muons_cscSegmentRecord_chamber.push_back(cscSegmentRecord_chamber);
+      muons_cscSegmentRecord_endcap.push_back(cscSegmentRecord_endcap);
+      muons_cscSegmentRecord_localY.push_back(cscSegmentRecord_localY);
+      muons_cscSegmentRecord_localX.push_back(cscSegmentRecord_localX);
     }
   muons_nMuons = counter;
   
+
+
 
   // Standalone Muon RecHits
   counter = 0;
@@ -879,7 +991,8 @@ UFCSCRootMaker::doTracks(edm::Handle<reco::TrackCollection> genTracks)
 
 
 void
-UFCSCRootMaker::doRecHits(edm::Handle<CSCRecHit2DCollection> recHits, edm::Handle<edm::PSimHitContainer> simHits, edm::Handle<reco::TrackCollection> saMuons,                          edm::Handle<reco::MuonCollection> muons, edm::ESHandle<CSCGeometry> cscGeom, const edm::Event& iEvent)
+UFCSCRootMaker::doRecHits(edm::Handle<CSCRecHit2DCollection> recHits, edm::Handle<edm::PSimHitContainer> simHits, edm::Handle<reco::TrackCollection> saMuons,  
+			  edm::Handle<reco::MuonCollection> muons, edm::ESHandle<CSCGeometry> cscGeom, const edm::Event& iEvent)
 {
 
   edm::Handle<CSCStripDigiCollection> myStrips;
@@ -1220,8 +1333,8 @@ UFCSCRootMaker::doSegments(edm::Handle<CSCSegmentCollection> cscSegments, edm::E
    counter = 0;
    for(CSCSegmentCollection::const_iterator dSiter=cscSegments->begin(); dSiter != cscSegments->end(); dSiter++) {
 
-     std::vector<double> recHitRecord_localX, recHitRecord_localY, recHitRecord_endcap;
-     std::vector<double> recHitRecord_layer, recHitRecord_chamber, recHitRecord_station, recHitRecord_ring;
+     std::vector<double> recHitRecord_localX, recHitRecord_localY;
+     std::vector<int> recHitRecord_layer, recHitRecord_chamber, recHitRecord_station, recHitRecord_ring, recHitRecord_endcap;
 
      CSCDetId id  = (CSCDetId)(*dSiter).cscDetId();
      int nRH = (*dSiter).nRecHits();
@@ -2649,6 +2762,279 @@ bool UFCSCRootMaker::withinSensitiveRegion(LocalPoint localPos, const std::array
 
 
 
+
+//From http://cmslxr.fnal.gov/lxr/source/RecoMuon/TrackingTools/src/SegmentsTrackAssociator.cc?v=CMSSW_6_1_2_SLHC4
+MuonTransientTrackingRecHit::MuonRecHitContainer 
+UFCSCRootMaker::findMuonSegments(edm::ESHandle<GlobalTrackingGeometry> theTrackingGeometry, const reco::Track& Track, 
+				 edm::Handle<CSCSegmentCollection> cscSegments, edm::ESHandle<CSCGeometry> cscGeom)
+{
+
+  //MuonTransientTrackingRecHit::MuonRecHitContainer selectedSegments;
+  MuonTransientTrackingRecHit::MuonRecHitContainer selectedCscSegments;
+  CSCSegmentCollection::const_iterator segment2;  
+
+  //cout << "FMS 1" << endl;
+
+  for(trackingRecHit_iterator recHit =  Track.recHitsBegin(); recHit != Track.recHitsEnd(); ++recHit)
+    {
+      
+      if(!(*recHit)->isValid()) continue;
+      
+      //cout << "VALID RH" << endl;
+
+      //get the detector Id
+      DetId idRivHit = (*recHit)->geographicalId();
+
+
+      // CSC recHits
+      if (idRivHit.det() == 2 /*DetId::Muon*/ && idRivHit.subdetId() == 2 /*MuonSubdetId::CSC*/ ) {
+
+	// get the RecHit Local Position
+	LocalPoint posTrackRecHit = (*recHit)->localPosition(); 
+	
+	CSCSegmentCollection::range range; 
+	// get the chamber Id
+	CSCDetId tempchamberId(idRivHit.rawId());
+	
+	int ring = tempchamberId.ring();
+	int station = tempchamberId.station();
+	int endcap = tempchamberId.endcap();
+	int chamber = tempchamberId.chamber();    
+	CSCDetId chamberId(endcap, station, ring, chamber, 0);
+	
+	// get the segments of the chamber
+	range = cscSegments->get(chamberId);
+	// loop over segments
+	for(segment2 = range.first; segment2!=range.second; segment2++){
+	  
+	  DetId id2 = segment2->geographicalId();
+	  const GeomDet* det2 = theTrackingGeometry->idToDet(id2);
+	  
+	  // container for CSC segment recHits
+	  vector<const TrackingRecHit*> cscRecHits = (&(*segment2))->recHits();
+	  
+
+	  // loop over the recHit checking if there's the recHit of the track     
+	  for (unsigned int hit = 0; hit < cscRecHits.size(); hit++) { 
+	    
+	    DetId idRivHitSeg = (*cscRecHits[hit]).geographicalId();
+	    LocalPoint posSegCSCRecHit = (*cscRecHits[hit]).localPosition(); 
+	    LocalPoint posCSCSegment =  segment2->localPosition();
+	    
+	    //CSCDetId idRivHitSegCSC((*cscRecHits[hit]).rawId());
+	    //const CSCChamber* chamberSegCSC = cscGeom->chamber(idRivHitSegCSC);
+	    //GlobalPoint gpRivHitSegCSC = GlobalPoint(0.0, 0.0, 0.0);
+	    //if (chamberSegCSC) gpRivHitSegCSC = cscchamber->toGlobal(posSegCSCRecHit);
+
+	    CSCDetId idRivHitCSC  = tempchamberId;
+	    const CSCChamber* chamberCSC = cscGeom->chamber(idRivHitCSC);
+	    GlobalPoint gpRivHitCSC = GlobalPoint(0.0, 0.0, 0.0);
+	    if (chamberCSC) gpRivHitCSC = chamberCSC->toGlobal(posCSCSegment);
+	    
+	    double rCSC=sqrt(pow((posSegCSCRecHit.x()-posTrackRecHit.x()),2) +pow((posSegCSCRecHit.y()-posTrackRecHit.y()),2) + pow((posSegCSCRecHit.z()-posTrackRecHit.z()),2));
+
+	    //cout << "FMS 2 " << rCSC << endl;
+	    
+	    if (idRivHit.det() == idRivHitSeg.det() && idRivHit.subdetId() == idRivHitSeg.subdetId() && rCSC < 1.5)
+	      {
+		//cout << "SELECTED" << endl;
+		if (selectedCscSegments.empty())
+		  {
+		    //cout << "FMS 3.1" << endl;
+		    selectedCscSegments.push_back(MuonTransientTrackingRecHit::specificBuild(det2,&*segment2));
+		  }
+		else{
+		  int check=0;
+		  for(int n=0; n< int(selectedCscSegments.size()); n++)
+		    {
+		      CSCDetId idRivHitSegCSC((*(selectedCscSegments[n])).rawId());
+		      const CSCChamber* chamberSegCSC = cscGeom->chamber(idRivHitSegCSC);
+		      GlobalPoint gpRivHitSegCSC = GlobalPoint(0.0, 0.0, 0.0);
+		      if (chamberSegCSC) gpRivHitSegCSC = chamberSegCSC->toGlobal(posSegCSCRecHit);
+		      double dist = sqrt(pow(gpRivHitSegCSC.x()-gpRivHitCSC.x(),2)+pow(gpRivHitSegCSC.y()-gpRivHitCSC.y(),2)+pow(gpRivHitSegCSC.z()-gpRivHitCSC.z(),2));
+		      
+		      //double dist = sqrt(pow(((*(selectedCscSegments[n])).localPosition().x()-posCSCSegment.x()),2) +pow(((*(selectedCscSegments[n])).localPosition().y()-posCSCSegment.y()),2) + pow(((*(selectedCscSegments[n])).localPosition().z()-posCSCSegment.z()),2));
+		      if(dist>30) check++;
+		      //cout << n << ", DIST  " << dist << "     (" << gpRivHitSegCSC.x()<<","<<gpRivHitSegCSC.y()<<","<<gpRivHitSegCSC.z()<<")   ("  
+		      //   << gpRivHitCSC.x()<<","<<gpRivHitCSC.y()<<","<<gpRivHitCSC.z()<<")" <<  endl;
+		    }
+		  //cout << " CHECK = " <<  check << "  " << int(selectedCscSegments.size()) << endl; 
+		  if(check==int(selectedCscSegments.size()))
+		    {  
+		      //cout << "FMS 3.2" << endl;
+		      selectedCscSegments.push_back(MuonTransientTrackingRecHit::specificBuild(det2,&*segment2));
+		    }
+		}
+		
+	      } // check to tag the segment as "selected"
+	    
+	  } // loop over segment recHits
+	  
+	} // loop over DT segments
+      } 
+      
+    } // loop over track recHits
+
+  
+  //copy(selectedCscSegments.begin(), selectedCscSegments.end(), back_inserter(selectedSegments));  
+
+  
+  //cout << "FMS 4  " << selectedCscSegments.size() << endl << endl << endl << endl; 
+  
+  return selectedCscSegments;
+  
+  
+}
+
+
+
+
+std::vector<CSCSegment> UFCSCRootMaker::findMuonSegments(edm::ESHandle<GlobalTrackingGeometry> theTrackingGeometry, const reco::Track& Track, 
+							 edm::Handle<CSCSegmentCollection> cscSegments, edm::Handle<CSCRecHit2DCollection> recHits, 
+							 edm::ESHandle<CSCGeometry> cscGeom)
+{
+
+  std::vector<CSCSegment> savedSegments;
+  std::vector<GlobalPoint> savedPoints;
+
+  for(trackingRecHit_iterator recHit =  Track.recHitsBegin(); recHit != Track.recHitsEnd(); ++recHit)
+    {
+      
+      if(!(*recHit)->isValid()) continue;
+
+      //cout << "Valid RH from Track" << endl;
+      
+      //get the detector Id
+      DetId idRivHit = (*recHit)->geographicalId();
+
+      // CSC recHits
+      if (idRivHit.det() == 2 /*DetId::Muon*/ && idRivHit.subdetId() == 2 /*MuonSubdetId::CSC*/ ) 
+	{
+	  //cout << "CSC RH" << endl;
+
+	  // get the RecHit Local Position
+	  LocalPoint posTrackRecHit = (*recHit)->localPosition(); 
+	  // get the chamber Id
+	  CSCDetId tempchamberId(idRivHit.rawId());
+	  int ring = tempchamberId.ring();
+	  int station = tempchamberId.station();
+	  int endcap = tempchamberId.endcap();
+	  int chamber = tempchamberId.chamber();    
+	  CSCDetId chamberId(endcap, station, ring, chamber, 0);
+	  int trackRHChamberSerial = chamberSerial(chamberId);
+	  
+	  for(CSCSegmentCollection::const_iterator dSiter=cscSegments->begin(); dSiter != cscSegments->end(); dSiter++) 
+	    {
+
+	      CSCDetId id  = (CSCDetId)(*dSiter).cscDetId();
+	      //int nRH = (*dSiter).nRecHits();
+	      int allSegChamberSerial = chamberSerial(id);
+
+	      //cout << "NEW SEG  " << allSegChamberSerial << "   " << trackRHChamberSerial << endl;
+	      if (allSegChamberSerial != trackRHChamberSerial) continue;
+	      LocalPoint localPos = (*dSiter).localPosition();
+	      const CSCChamber* cscchamber = cscGeom->chamber(id);
+	      GlobalPoint globalPosition = GlobalPoint(0.0, 0.0, 0.0);
+	      if (cscchamber) globalPosition = cscchamber->toGlobal(localPos);
+	      
+
+	      //For some reason, the track recHit localPosition is actually the LP for the segment it belongs to...
+	      //So this is not needed.
+	      /*
+	      bool selected = false;
+	      std::vector<CSCRecHit2D> theseRecHits = (*dSiter).specificRecHits();
+	      for ( vector<CSCRecHit2D>::const_iterator iRH = theseRecHits.begin(); iRH != theseRecHits.end(); iRH++) 
+		{
+		  LocalPoint rhitlocal = (*iRH).localPosition();
+		  cout << "RH from Seg   (" <<rhitlocal.x()<<","<<rhitlocal.y()<<","<<rhitlocal.z()<<")"<< "   ("
+		       << posTrackRecHit.x() << "," << posTrackRecHit.y() << "," << posTrackRecHit.z() << ")     S(" 
+		       << localPos.x() << "," << localPos.y() << "," << localPos.z() << ") " << endl;
+		    
+
+		  if (rhitlocal.x() != posTrackRecHit.x()) continue;
+		  if (rhitlocal.y() != posTrackRecHit.y()) continue;
+		  if (rhitlocal.z() != posTrackRecHit.z()) continue;
+		  selected = true;
+		}
+	      */
+	      if (localPos.x() != posTrackRecHit.x()) continue;                                                                                                                                            
+	      if (localPos.y() != posTrackRecHit.y()) continue;                                                                                                                                            
+	      if (localPos.z() != posTrackRecHit.z()) continue; 
+	      
+	      //cout << "Selected!" << endl;
+	      if(savedSegments.empty())
+		{
+		  savedSegments.push_back(*dSiter);
+		  savedPoints.push_back(globalPosition);
+		}
+	      else{
+		bool alreadySaved = false;
+		for(int n = 0; n< int(savedSegments.size()); n++)
+		  {
+		    if(savedPoints[n] == globalPosition) alreadySaved = true;
+		  }
+		if(!alreadySaved)
+		  {
+		    savedSegments.push_back(*dSiter);
+		    savedPoints.push_back(globalPosition);
+		  }
+	      }		
+	      //cout << "BREAKING LOOP " << endl;
+	      break;//break loop over segments since you already found one for this track recHit
+	    	      
+	    }//Segment loop
+		
+	}//if ID == MuonSystem && ID == CSC
+
+    }//Loop over track recHits
+
+  //cout << endl << endl << endl;
+
+  return savedSegments;
+  
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 void 
 UFCSCRootMaker::bookTree(TTree *tree) 
 {
@@ -2780,6 +3166,7 @@ UFCSCRootMaker::bookTree(TTree *tree)
   tree->Branch("muons_isStandAloneMuon",   muons_isStandAloneMuon,   "muons_isStandAloneMuon[muons_nMuons]/O");
   tree->Branch("muons_isGlobalMuon",   muons_isGlobalMuon,   "muons_isGlobalMuon[muons_nMuons]/O");
   tree->Branch("muons_numberOfChambers",  muons_numberOfChambers,   "muons_numberOfChambers[muons_nMuons]/I");
+  tree->Branch("muons_numberOfSegments",  muons_numberOfSegments,   "muons_numberOfSegments[muons_nMuons]/I");
   tree->Branch("muons_numberOfMatches",   muons_numberOfMatches,   "muons_numberOfMatches[muons_nMuons]/I");
   tree->Branch("muons_isEnergyValid",   muons_isEnergyValid,   "muons_isEnergyValid[muons_nMuons]/O");
   tree->Branch("muons_calEnergyTower",   muons_calEnergyTower,   "muons_calEnergyTower[muons_nMuons]/D");
@@ -2813,6 +3200,17 @@ UFCSCRootMaker::bookTree(TTree *tree)
   tree->Branch("muons_isoPU04",   muons_isoPU04,   "muons_isoPU04[muons_nMuons]/D");
   tree->Branch("muons_dz",   muons_dz,   "muons_dz[muons_nMuons]/D");
   tree->Branch("muons_dxy",   muons_dxy,   "muons_dxy[muons_nMuons]/D");
+  tree->Branch("muons_nRecHits",   muons_nRecHits,   "muons_nRecHits[muons_nMuons]/I");
+  tree->Branch("muons_cscSegmentRecord_nRecHits", &muons_cscSegmentRecord_nRecHits);
+  tree->Branch("muons_cscSegmentRecord_ring", &muons_cscSegmentRecord_ring);
+  tree->Branch("muons_cscSegmentRecord_station", &muons_cscSegmentRecord_station);
+  tree->Branch("muons_cscSegmentRecord_chamber", &muons_cscSegmentRecord_chamber);
+  tree->Branch("muons_cscSegmentRecord_endcap", &muons_cscSegmentRecord_endcap);
+  tree->Branch("muons_cscSegmentRecord_localY", &muons_cscSegmentRecord_localY);
+  tree->Branch("muons_cscSegmentRecord_localX", &muons_cscSegmentRecord_localX);
+ 
+
+
 
   // L1 GMT
   tree->Branch("l1Trigger_CSC",  &l1Trigger_CSC,  "l1Trigger_CSC/O");
