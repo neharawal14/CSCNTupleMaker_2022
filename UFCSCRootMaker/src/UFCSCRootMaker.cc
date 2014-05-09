@@ -261,7 +261,9 @@ private:
   std::vector<int>     nmbhvsegm;
   std::vector<float> distRHvec;
 
-
+  //Vertices
+  int vertex_nVertex;
+  
   // Muons
   int       muons_nMuons;
   bool      muons_isStandAloneMuon[1000], muons_isGlobalMuon[1000], muons_isPFMuon[1000], muons_isCaloMuon[1000], muons_isTrackerMuon[1000];
@@ -520,6 +522,7 @@ void UFCSCRootMaker::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
      {
        iEvent.getByLabel(vertexSrc,vertex);
        if(!vertex->empty() && vertex->size() > 0) PV = &(vertex->at(0));
+       vertex_nVertex = (int) vertex->size();
      }
    // get the standalone muon collection
    edm::Handle<reco::TrackCollection> saMuons;
@@ -2881,6 +2884,9 @@ UFCSCRootMaker::bookTree(TTree *tree)
   tree->Branch("LumiSect",&LumiSect,"LumiSect/l");
   tree->Branch("BunchCrossing",&BunchCrossing,"BunchCrossing/I");
   tree->Branch("timeSecond",&timeSecond,"timeSecond/i");
+
+  //Vertex
+  tree->Branch("vertex_nVertex",&vertex_nVertex,"vertex_nVertex/I");
 
   //Lumi
   tree->Branch("avgInstantLumi",&avgInstantLumi,"avgInstantLumi/D");
