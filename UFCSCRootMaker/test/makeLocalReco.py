@@ -5,7 +5,7 @@ import FWCore.ParameterSet.Config as cms
 
 process = cms.Process("RECO")
 
-process.load("Configuration.StandardSequences.Geometry_cff")
+process.load("Configuration.Geometry.GeometryIdeal_cff")
 process.load("Configuration.StandardSequences.MagneticField_cff")
 process.load("Configuration.StandardSequences.FrontierConditions_GlobalTag_cff")
 process.load("Configuration.StandardSequences.RawToDigi_Data_cff")
@@ -15,13 +15,12 @@ process.load('Configuration.StandardSequences.Services_cff')
 
 ##################################################
 # --- MATCH GT TO RELEASE AND DATA SAMPLE
-process.GlobalTag.globaltag = "POSTLS161_V11::All"
+#process.GlobalTag.globaltag = "POSTLS161_V11::All"
+process.GlobalTag.globaltag = "START53_V19D::All"
 process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(-1) )
 isSIMDIGI = bool(False)
 isRAW = bool(True)
 ###################################################
-
-
 
 
 process.options   = cms.untracked.PSet( SkipEvent = cms.untracked.vstring("ProductNotFound") )
@@ -29,8 +28,9 @@ process.options   = cms.untracked.PSet( wantSummary = cms.untracked.bool(True) )
 process.source    = cms.Source("PoolSource",
     fileNames = cms.untracked.vstring(
 
-'file:./RelValJpsiMM_GEN-SIM-DIGI-RAW-HLTDEBUG_PRE_ST62_V8-v1/7412617A-E2E0-E211-8DB9-003048FEADCC.root',
-'file:./RelValJpsiMM_GEN-SIM-DIGI-RAW-HLTDEBUG_PRE_ST62_V8-v1/F0558878-E4E0-E211-8D59-02163E007A13.root'
+#'file:./RelValJpsiMM_GEN-SIM-DIGI-RAW-HLTDEBUG_PRE_ST62_V8-v1/7412617A-E2E0-E211-8DB9-003048FEADCC.root',
+#'file:./RelValJpsiMM_GEN-SIM-DIGI-RAW-HLTDEBUG_PRE_ST62_V8-v1/F0558878-E4E0-E211-8D59-02163E007A13.root'
+#'file:/cms/data/store/mc/Summer13dr53X/DYToMuMu_M_20_TuneZ2star_13TeV-pythia6/GEN-SIM-RAW/PU25bx25_START53_V19D-v1/20000/BAB7C472-6ADF-E211-8702-20CF3027A5E9.root'
 
     )
 )
@@ -52,7 +52,7 @@ process.csc2DRecHits.stripDigiTag = cms.InputTag("simMuonCSCDigis","MuonCSCStrip
 
 process.out = cms.OutputModule("PoolOutputModule",
                                fastCloning = cms.untracked.bool(False),
-                               fileName = cms.untracked.string('RECO.root'),
+                               fileName = cms.untracked.string('/cms/data/store/user/patTuples/CSC/mc/DYToMuMu_13TeV_GSR_localRECO.root'),
                                outputCommands = cms.untracked.vstring('keep *')
                                )
 
@@ -93,5 +93,5 @@ process.out_step = cms.EndPath(process.out)
 # Schedule definition
 process.schedule = cms.Schedule(process.reco, process.out_step)
 
-if isSIMDIGI:
-    process.schedule.replace(process.reco,process.unpack*process.reco)
+if isRAW:
+    process.reco.replace(process.csc2DRecHits,process.muonCSCDigis * process.gtDigis * process.csc2DRecHits * process.cscSegments)
