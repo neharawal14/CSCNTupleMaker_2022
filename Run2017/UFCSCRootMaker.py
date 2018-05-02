@@ -4,11 +4,11 @@
 #                                                                    #
 ######################################################################
 import FWCore.ParameterSet.Config as cms
-doUnpacking = bool(True)
+doUnpacking = bool(False)
 
 ########## Options ############
 isDATA = bool(True)
-isRAW = bool(True)
+isRAW = bool(False)
 isDIGI = bool(False)
 
 isSIM = bool(False)
@@ -132,8 +132,8 @@ if isDATA:
 #'root://cmsio2.rc.ufl.edu//store/user/hmei/rootfiles_2017/HiggsEventList_v1/SingleMuon/crab_pickEvents/180205_123503/0000/pickevents_12.root'
 #'file://00E68DCF-E3B2-E711-910F-48FD8EE73A03.root'
 #'file:/raid/raid8/mhl/CSC_Run2/CMSSW_dev/inputRoot/0014C2C5-92BA-E711-ADD1-008CFAFBE8F2.root'
-#'root://cms-xrd-global.cern.ch//store/data/Run2017E/SingleMuon/RECO/PromptReco-v1/000/304/778/00001/86F81A31-9BB0-E711-932A-02163E01433C.root'
-'root://cms-xrd-global.cern.ch//store/data/Run2017H/SingleMuon/RAW/v1/000/306/926/00000/7C91264C-E0CE-E711-AEFA-02163E019BEA.root'
+'root://cms-xrd-global.cern.ch//store/data/Run2017E/SingleMuon/RECO/PromptReco-v1/000/304/778/00001/86F81A31-9BB0-E711-932A-02163E01433C.root'
+#'root://cms-xrd-global.cern.ch//store/data/Run2017H/SingleMuon/RAW/v1/000/306/926/00000/7C91264C-E0CE-E711-AEFA-02163E019BEA.root'
 )
 else:
     process.source.fileNames = cms.untracked.vstring(DUMMYFILELIST)
