@@ -4,12 +4,12 @@
 #                                                                    #
 ######################################################################
 import FWCore.ParameterSet.Config as cms
-doUnpacking = bool(True)
+doUnpacking = bool(False)
 
 ########## Options ############
 isDATA = bool(True)
-isRAW = bool(True)
-isDIGI = bool(True)
+isRAW = bool(False)
+isDIGI = bool(False)
 
 isSIM = bool(False)
 isGEN = bool(False)
@@ -18,15 +18,15 @@ isLocalRECO = bool(True)
 isFullRECO = bool(True)
 
 addMuonInfo = bool(True)
-addTrackInfo = bool(True)
+addTrackInfo = bool(False)
 addRecHitInfo = bool(True)
 addSegmentInfo = bool(True)
-addTriggerInfo = bool(False)
+addTriggerInfo = bool(True)
 
-addDigiInfo = bool(True)
+addDigiInfo = bool(False)
 
 addTimeMonitoringInfo = bool(True)
-addCalibrationInfo = bool(True)
+addCalibrationInfo = bool(False)
 
 maxEvents = -1
 
@@ -76,12 +76,10 @@ process.MessageLogger.suppressWarning.append('classByHitsGlb') # kill stupid RPC
 #process.load('Configuration.EventContent.EventContent_cff')
 ###
 
+process.load("CondCore.CondDB.CondDB_cfi")
 process.load('Configuration.Geometry.GeometryRecoDB_cff')
-
-#process.load("Configuration/StandardSequences/Geometry_cff")
 process.load("Configuration/StandardSequences/MagneticField_cff")
 process.load("Configuration/StandardSequences/FrontierConditions_GlobalTag_cff")
-process.load("CondCore.CondDB.CondDB_cfi")
 process.load("Configuration/StandardSequences/RawToDigi_Data_cff")
 process.load("Configuration.StandardSequences.Reconstruction_cff")
 ###
@@ -122,20 +120,26 @@ process.source = cms.Source ("PoolSource",
                              )
 
 if isDATA:
-    process.source.fileNames = cms.untracked.vstring(DUMMYFILELIST
+    process.source.fileNames = cms.untracked.vstring(
 # 'root://cmsxrootd.fnal.gov//store/data/Run2015D/SingleMuon/RAW-RECO/ZMu-16Dec2015-v1/10000/005D37B2-3CA9-E511-B9AF-001E67398223.root',
 # 'root://cmsxrootd.fnal.gov//store/data/Run2015D/SingleMuon/RAW-RECO/ZMu-16Dec2015-v1/10000/005D37B2-3CA9-E511-B9AF-001E67398223.root',
 # 'root://cmsxrootd.fnal.gov//store/data/Run2015D/SingleMuon/RAW-RECO/ZMu-16Dec2015-v1/10000/005D37B2-3CA9-E511-B9AF-001E67398223.root',
 # 'root://cmsxrootd.fnal.gov//store/data/Run2015D/SingleMuon/RAW-RECO/ZMu-16Dec2015-v1/10000/005D37B2-3CA9-E511-B9AF-001E67398223.root',
 # 'root://cmsxrootd.fnal.gov//store/data/Run2015D/SingleMuon/RAW-RECO/ZMu-16Dec2015-v1/10000/005D37B2-3CA9-E511-B9AF-001E67398223.root',
-#'root://cmsxrootd.fnal.gov//store/data/Run2016C/SingleMuon/RECO/PromptReco-v2/000/275/657/00000/00DFFD18-693B-E611-BDF2-02163E0140F2.root'
-        )
+#'root://cmsxrootd.fnal.gov//store/data/Run2016F/SingleMuon/RECO/PromptReco-v1/000/277/981/00000/0075B7D0-6659-E611-8EB7-02163E012008.root'
+#'root://cmsxrootd.fnal.gov//store/data/Run2016B/SingleMuon/RECO/PromptReco-v2/000/273/150/00000/1C609FC2-D919-E611-ACFB-02163E011C02.root'
+#'file:/raid/raid8/mhl/CSC_Run2/CMSSW_dev/outputRoot/test2.root'
+#'root://cmsio2.rc.ufl.edu//store/user/hmei/rootfiles_2017/HiggsEventList_v1/SingleMuon/crab_pickEvents/180205_123503/0000/pickevents_12.root'
+#'file://00E68DCF-E3B2-E711-910F-48FD8EE73A03.root'
+#'file:/raid/raid8/mhl/CSC_Run2/CMSSW_dev/inputRoot/0014C2C5-92BA-E711-ADD1-008CFAFBE8F2.root'
+'root://cms-xrd-global.cern.ch//store/data/Run2017E/SingleMuon/RECO/PromptReco-v1/000/304/778/00001/86F81A31-9BB0-E711-932A-02163E01433C.root'
+)
 else:
     process.source.fileNames = cms.untracked.vstring(DUMMYFILELIST)
     process.source.fileNames.extend( [
 #        '/store/relval/CMSSW_7_0_0/RelValTTbar/GEN-SIM-DIGI-RECO/START70_V6_FastSim-v2/00000/00743452-B498-E311-AD84-02163E00EAC9.root',
-#        'file:/cms/data/store/data/Run2012B/SingleMu/RECO/22Jan2013-v1/20040/F04E9749-2D74-E211-9EE4-E0CB4E19F9BC.root'
-        'root://cmsxrootd.fnal.gov//store/group/upgrade/muon/ME0GlobalReco/ME0MuonReRun_DY_SLHC23patch1_SegmentReRunFullRun_ForPublish/M-20_TuneZ2star_14TeV_6_2_0_SLHC23patch1_2023/DYToMuMu_M-20_TuneZ2star_14TeV-pythia6-tauola/DYToMuMu_M-20_TuneZ2star_14TeV-pythia6-tauola_2023SHCalNoTaper_PU140_Selectors_RECO/b52ce42d5986c94dc336f39e015d825e/output_100_2_p9i.root'
+#        'file:/raid/raid8/mhl/CSC_Run2/CMSSW_dev/outputRoot/test2.root'
+#        'root://cmsxrootd.fnal.gov//store/group/upgrade/muon/ME0GlobalReco/ME0MuonReRun_DY_SLHC23patch1_SegmentReRunFullRun_ForPublish/M-20_TuneZ2star_14TeV_6_2_0_SLHC23patch1_2023/DYToMuMu_M-20_TuneZ2star_14TeV-pythia6-tauola/DYToMuMu_M-20_TuneZ2star_14TeV-pythia6-tauola_2023SHCalNoTaper_PU140_Selectors_RECO/b52ce42d5986c94dc336f39e015d825e/output_100_2_p9i.root'
         ]
     )
     
@@ -207,8 +211,9 @@ if not isDATA:
     process.p.replace(process.nEventsTotal,process.nEventsTotal*process.totalKinematicsFilter)
 
 if isDATA:
-    process.p.replace(process.nEventsTotal,process.nEventsTotal)
+#    process.load("CondCore.CondDB.CondDB_cfi")
 #    process.p.replace(process.nEventsTotal,process.hltPhysicsDeclared*process.nEventsTotal)
+    process.p.replace(process.nEventsTotal,process.nEventsTotal)
 
 if doUnpacking:
     process.p.replace(process.nEventsTotal,process.unpack*process.nEventsTotal)
