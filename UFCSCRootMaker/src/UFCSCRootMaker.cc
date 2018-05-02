@@ -132,11 +132,11 @@
 
 #include "DataFormats/Luminosity/interface/LumiDetails.h"
 #include "DataFormats/Luminosity/interface/LumiSummary.h"
-#include "RecoLuminosity/LumiProducer/interface/LumiCorrectionParam.h"
+//#include "RecoLuminosity/LumiProducer/interface/LumiCorrectionParam.h"
 
 #include "TFile.h"
 #include "TTree.h"
-
+#include "TSystem.h"
 
 using namespace std;
 
@@ -149,7 +149,7 @@ public:
   explicit UFCSCRootMaker(const edm::ParameterSet&);
   ~UFCSCRootMaker();
   
-  static void fillDescriptions(edm::ConfigurationDescriptions& descriptions);
+//  static void fillDescriptions(edm::ConfigurationDescriptions& descriptions);
   
   
 private:
@@ -162,13 +162,15 @@ private:
   virtual void beginLuminosityBlock(edm::LuminosityBlock const&, edm::EventSetup const&);
   virtual void endLuminosityBlock(edm::LuminosityBlock const&, edm::EventSetup const&);
 
+//  void doMuons(edm::Handle<reco::Muon> muons, edm::Handle<reco::TrackCollection> saMuons, edm::Handle<CSCSegmentCollection> cscSegments, edm::Handle<CSCRecHit2DCollection> recHits,
+ //              const reco::Vertex *&PV, const edm::Event& iEvent, const edm::EventSetup& iSetup, edm::ESHandle<GlobalTrackingGeometry> theGeom, edm::ESHandle<CSCGeometry> cscGeom);
 
   void doMuons(edm::Handle<reco::MuonCollection> muons, edm::Handle<reco::TrackCollection> saMuons, edm::Handle<CSCSegmentCollection> cscSegments, edm::Handle<CSCRecHit2DCollection> recHits,
 	       const reco::Vertex *&PV, const edm::Event& iEvent, const edm::EventSetup& iSetup, edm::ESHandle<GlobalTrackingGeometry> theGeom, edm::ESHandle<CSCGeometry> cscGeom);
   void doTracks(edm::Handle<reco::TrackCollection> genTracks);
   void doRecHits(edm::Handle<CSCRecHit2DCollection> recHits, edm::Handle<edm::PSimHitContainer> simHits, edm::Handle<reco::TrackCollection> saMuons, 
 		 edm::Handle<reco::MuonCollection> muons, edm::ESHandle<CSCGeometry> cscGeom, const edm::Event& iEvent);
-  float getthisSignal(const CSCStripDigiCollection& stripdigis, CSCDetId idRH, int centerStrip);
+  double getthisSignal(const CSCStripDigiCollection& stripdigis, CSCDetId idRH, int centerStrip);
   void doSegments(edm::Handle<CSCSegmentCollection> cscSegments, edm::ESHandle<CSCGeometry> cscGeom);
   void doTrigger(edm::Handle<L1MuGMTReadoutCollection> pCollection, edm::Handle<edm::TriggerResults> hlt);
   void doStripDigis(edm::Handle<CSCStripDigiCollection> strips, edm::ESHandle<CSCGeometry> cscGeom);
@@ -179,13 +181,13 @@ private:
 		  edm::Handle<L1MuGMTReadoutCollection> pCollection, edm::ESHandle<CSCGeometry> cscGeom, 
 		  const edm::EventSetup& eventSetup, const edm::Event &event);
   void doCalibrations(const edm::EventSetup& eventSetup);
-  float fitX(CLHEP::HepMatrix points, CLHEP::HepMatrix errors);
+  double fitX(CLHEP::HepMatrix points, CLHEP::HepMatrix errors);
   void doNonAssociatedRecHits(edm::Handle<CSCSegmentCollection> cscSegments, edm::ESHandle<CSCGeometry> cscGeom,  edm::Handle<CSCStripDigiCollection> strips);
   int chamberSerial( CSCDetId id );
   int ringSerial( CSCDetId id );
   int getWidth(const CSCStripDigiCollection& stripdigis, CSCDetId idRH, int centerStrip);
   void doGasGain(const CSCWireDigiCollection& wirecltn,  const CSCStripDigiCollection&   strpcltn, const CSCRecHit2DCollection& rechitcltn);  
-  bool withinSensitiveRegion(LocalPoint localPos, const std::array<const float, 4> & layerBounds, int station, int ring, float shiftFromEdge, float shiftFromDeadZone);
+  bool withinSensitiveRegion(LocalPoint localPos, const std::array<const double, 4> & layerBounds, int station, int ring, double shiftFromEdge, double shiftFromDeadZone);
 
   std::vector<CSCSegment> findMuonSegments(edm::ESHandle<GlobalTrackingGeometry> theTrackingGeometry, const reco::Track& Track, 
 					   edm::Handle<CSCSegmentCollection> cscSegments, edm::Handle<CSCRecHit2DCollection> recHits, 
@@ -200,22 +202,22 @@ private:
   void bookTree(TTree *tree);
 
   //---- Variables ----//
-  edm::InputTag muonSrc;
-  edm::InputTag vertexSrc;
-  edm::InputTag standAloneMuonsSrc;
-  edm::InputTag cscRecHitTagSrc;
-  edm::InputTag cscSegTagSrc;
-  edm::InputTag level1TagSrc;
-  edm::InputTag hltTagSrc;
-
-  edm::InputTag stripDigiTagSrc;
-  edm::InputTag wireDigiTagSrc;
-  edm::InputTag compDigiTagSrc;
-  edm::InputTag alctDigiTagSrc;
-  edm::InputTag clctDigiTagSrc;
-  edm::InputTag corrlctDigiTagSrc;
-  edm::InputTag simHitTagSrc;
-  edm::InputTag fedRawTagSrc;
+  edm::EDGetTokenT<reco::MuonCollection> muonSrc;
+//  edm::InputTag muonSrc;
+  edm::EDGetTokenT<reco::VertexCollection> vertexSrc;
+  edm::EDGetTokenT<reco::TrackCollection> standAloneMuonsSrc;
+  edm::EDGetTokenT<CSCRecHit2DCollection> cscRecHitTagSrc;
+  edm::EDGetTokenT<CSCSegmentCollection> cscSegTagSrc;
+  edm::EDGetTokenT<L1MuGMTReadoutCollection> level1TagSrc;
+  edm::EDGetTokenT<edm::TriggerResults> hltTagSrc;
+  edm::EDGetTokenT<CSCWireDigiCollection> wireDigiTagSrc;
+  edm::EDGetTokenT<CSCStripDigiCollection> stripDigiTagSrc;
+  edm::EDGetTokenT<CSCComparatorDigiCollection> compDigiTagSrc;
+  edm::EDGetTokenT<CSCALCTDigiCollection> alctDigiTagSrc;
+  edm::EDGetTokenT<CSCCLCTDigiCollection> clctDigiTagSrc;
+  edm::EDGetTokenT<CSCCorrelatedLCTDigiCollection> corrlctDigiTagSrc;
+  edm::EDGetTokenT<edm::PSimHitContainer> simHitTagSrc;
+  edm::EDGetTokenT<FEDRawDataCollection> fedRawTagSrc;
 
   SegmentsTrackAssociator* theSegmentsAssociator;
   edm::ParameterSet parameters;
@@ -231,13 +233,14 @@ private:
   unsigned int timeSecond;
 
   // Luminosity
+/*
   double avgInstantLumi;
   double rawbxlumi;
   double correctedAvgInstantLumi;
   double bx_B1[3564];
   double bx_B2[3564];
   double bx_LUMI[3564];  
-
+*/
 
   int counter;
 
@@ -255,11 +258,11 @@ private:
   std::multimap<CSCDetId , CSCRecHit2D> AllRechits;
   std::multimap<CSCDetId , CSCRecHit2D> SegRechits;
   std::multimap<CSCDetId , CSCRecHit2D> NonAssociatedRechits;
-  //std::map<CSCRecHit2D , float,ltrh> distRHmap;
+  //std::map<CSCRecHit2D , double,ltrh> distRHmap;
   std::map<int, int>   m_single_wire_layer;
   std::map<int, std::vector<int> >   m_wire_hvsegm;
   std::vector<int>     nmbhvsegm;
-  std::vector<float> distRHvec;
+  std::vector<double> distRHvec;
 
   //Vertices
   int vertex_nVertex;
@@ -375,7 +378,7 @@ private:
   // Comparator Digis
   int comparatorDigis_nDigis;
   int comparatorDigis_ID_endcap[10000], comparatorDigis_ID_station[10000], comparatorDigis_ID_layer[10000], comparatorDigis_cfeb[10000];
-  int comparatorDigis_ID_chamber[10000], comparatorDigis_ID_strip[10000], comparatorDigis_timeBin[10000], comparatorDigis_ID_ring[10000];
+  int comparatorDigis_ID_chamber[10000], comparatorDigis_ID_strip[10000], comparatorDigis_ID_halfStrip[10000], comparatorDigis_timeBin[10000], comparatorDigis_ID_ring[10000];
 
   // ALCTs
   int alct_nAlcts;
@@ -442,21 +445,24 @@ private:
 //Constructor
 UFCSCRootMaker::UFCSCRootMaker(const edm::ParameterSet& iConfig) :
   histContainer_(),
-  muonSrc(iConfig.getUntrackedParameter<edm::InputTag>("muonSrc")),
-  vertexSrc(iConfig.getUntrackedParameter<edm::InputTag>("vertexSrc")),
-  standAloneMuonsSrc(iConfig.getUntrackedParameter<edm::InputTag>("standAloneMuonsSrc")),
-  cscRecHitTagSrc(iConfig.getUntrackedParameter<edm::InputTag>("cscRecHitTagSrc")),
-  cscSegTagSrc(iConfig.getUntrackedParameter<edm::InputTag>("cscSegTagSrc")),
-  level1TagSrc(iConfig.getUntrackedParameter<edm::InputTag>("level1TagSrc")),
-  hltTagSrc(iConfig.getUntrackedParameter<edm::InputTag>("hltTagSrc")),
-  stripDigiTagSrc(iConfig.getUntrackedParameter<edm::InputTag>("stripDigiTagSrc")),
-  wireDigiTagSrc(iConfig.getUntrackedParameter<edm::InputTag>("wireDigiTagSrc")),
-  compDigiTagSrc(iConfig.getUntrackedParameter<edm::InputTag>("compDigiTagSrc")),
-  alctDigiTagSrc(iConfig.getUntrackedParameter<edm::InputTag>("alctDigiTagSrc")),
-  clctDigiTagSrc(iConfig.getUntrackedParameter<edm::InputTag>("clctDigiTagSrc")),
-  corrlctDigiTagSrc(iConfig.getUntrackedParameter<edm::InputTag>("corrlctDigiTagSrc")),
-  simHitTagSrc(iConfig.getUntrackedParameter<edm::InputTag>("simHitTagSrc")),
-  fedRawTagSrc(iConfig.getUntrackedParameter<edm::InputTag>("fedRawTagSrc")),
+  muonSrc(consumes<reco::MuonCollection>(iConfig.getUntrackedParameter<edm::InputTag>("muonSrc"))),
+
+//  muonSrc(iConfig.getUntrackedParameter<edm::InputTag>("muonSrc")),
+  vertexSrc(consumes<reco::VertexCollection>(iConfig.getUntrackedParameter<edm::InputTag>("vertexSrc"))),
+  standAloneMuonsSrc(consumes<reco::TrackCollection>(iConfig.getUntrackedParameter<edm::InputTag>("standAloneMuonsSrc"))),
+  cscRecHitTagSrc(consumes<CSCRecHit2DCollection>(iConfig.getUntrackedParameter<edm::InputTag>("cscRecHitTagSrc"))),
+  cscSegTagSrc(consumes<CSCSegmentCollection>(iConfig.getUntrackedParameter<edm::InputTag>("cscSegTagSrc"))),
+  level1TagSrc(consumes<L1MuGMTReadoutCollection>(iConfig.getUntrackedParameter<edm::InputTag>("level1TagSrc"))),
+  hltTagSrc(consumes<edm::TriggerResults>(iConfig.getUntrackedParameter<edm::InputTag>("hltTagSrc"))),
+  wireDigiTagSrc(consumes<CSCWireDigiCollection>(iConfig.getUntrackedParameter<edm::InputTag>("wireDigiTagSrc"))),
+  stripDigiTagSrc(consumes<CSCStripDigiCollection>(iConfig.getUntrackedParameter<edm::InputTag>("stripDigiTagSrc"))),
+  compDigiTagSrc(consumes<CSCComparatorDigiCollection>(iConfig.getUntrackedParameter<edm::InputTag>("compDigiTagSrc"))),
+  alctDigiTagSrc(consumes<CSCALCTDigiCollection>(iConfig.getUntrackedParameter<edm::InputTag>("alctDigiTagSrc"))),
+  clctDigiTagSrc(consumes<CSCCLCTDigiCollection>(iConfig.getUntrackedParameter<edm::InputTag>("clctDigiTagSrc"))),
+  corrlctDigiTagSrc(consumes<CSCCorrelatedLCTDigiCollection>(iConfig.getUntrackedParameter<edm::InputTag>("corrlctDigiTagSrc"))),
+  simHitTagSrc(consumes<edm::PSimHitContainer>(iConfig.getUntrackedParameter<edm::InputTag>("simHitTagSrc"))),
+  fedRawTagSrc(consumes<FEDRawDataCollection>(iConfig.getUntrackedParameter<edm::InputTag>("fedRawTagSrc"))),
+
   isFullRECO(iConfig.getUntrackedParameter<bool>("isFullRECO",false)),
   isLocalRECO(iConfig.getUntrackedParameter<bool>("isLocalRECO",false)),
   isGEN(iConfig.getUntrackedParameter<bool>("isGEN",false)),
@@ -486,7 +492,6 @@ UFCSCRootMaker::UFCSCRootMaker(const edm::ParameterSet& iConfig) :
 //Destructor
 UFCSCRootMaker::~UFCSCRootMaker()
 {
- 
    // do anything here that needs to be done at desctruction time
 
 }
@@ -498,35 +503,38 @@ void UFCSCRootMaker::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
 {
    using namespace edm;
    using namespace std;
-
-
    /// Time in seconds since January 1, 1970.
    timeSecond = iEvent.time().unixTime();
 
    //Luminosity
-   edm::Handle<LumiDetails> LumiDet;
-   if(isFullRECO && isDATA) iEvent.getLuminosityBlock().getByLabel("lumiProducer",LumiDet); 
+//   edm::Handle<LumiDetails> LumiDet;
+//   if(isFullRECO && isDATA) iEvent.getLuminosityBlock().getByToken("lumiProducer",LumiDet); 
 
    //general tracks
-   edm::Handle<reco::TrackCollection> genTracks;
-   if(isFullRECO) iEvent.getByLabel("generalTracks",genTracks);
+//   edm::Handle<reco::TrackCollection> genTracks;
+//   if(isFullRECO) iEvent.getByToken("generalTracks",genTracks);
 
    //muons
    edm::Handle<reco::MuonCollection> muons;
-   if(isFullRECO) iEvent.getByLabel(muonSrc,muons);
+//   edm::Handle<reco::Muon> muons;   
+   if(isFullRECO) iEvent.getByToken(muonSrc,muons);
+
 
    //vertex
    const reco::Vertex *PV = 0;
    edm::Handle<reco::VertexCollection> vertex;
    if(isFullRECO) 
      {
-       iEvent.getByLabel(vertexSrc,vertex);
+       iEvent.getByToken(vertexSrc,vertex);
        if(!vertex->empty() && vertex->size() > 0) PV = &(vertex->at(0));
        vertex_nVertex = (int) vertex->size();
      }
+
+
    // get the standalone muon collection
    edm::Handle<reco::TrackCollection> saMuons;
-   if(isFullRECO) iEvent.getByLabel(standAloneMuonsSrc,saMuons);
+   if(isFullRECO) iEvent.getByToken(standAloneMuonsSrc,saMuons);
+
 
    edm::ESHandle<CSCGeometry> cscGeom;
    iSetup.get<MuonGeometryRecord>().get(cscGeom);   
@@ -535,18 +543,18 @@ void UFCSCRootMaker::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
    iSetup.get<GlobalTrackingGeometryRecord>().get(geometry_);
    
    edm::Handle<CSCRecHit2DCollection> recHits;
-   if(isLocalRECO || isFullRECO) iEvent.getByLabel(cscRecHitTagSrc,recHits);
+   if(isLocalRECO || isFullRECO) iEvent.getByToken(cscRecHitTagSrc,recHits);
 
    // get CSC segment collection
    edm::Handle<CSCSegmentCollection> cscSegments;
-   if(isLocalRECO || isFullRECO) iEvent.getByLabel(cscSegTagSrc, cscSegments);
+   if(isLocalRECO || isFullRECO) iEvent.getByToken(cscSegTagSrc, cscSegments);
  
    // get the trigger collection
    edm::Handle<L1MuGMTReadoutCollection> pCollection;
-   iEvent.getByLabel(level1TagSrc,pCollection);
+   iEvent.getByToken(level1TagSrc,pCollection);
 
    edm::Handle<edm::TriggerResults> hlt;
-   iEvent.getByLabel(hltTagSrc,hlt);
+   iEvent.getByToken(hltTagSrc,hlt);
    
    // get the digi collections
    edm::Handle<CSCWireDigiCollection> wires;
@@ -556,16 +564,17 @@ void UFCSCRootMaker::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
    edm::Handle<CSCCLCTDigiCollection> clcts;
    edm::Handle<CSCCorrelatedLCTDigiCollection> correlatedlcts;
    if (isDIGI){
-     iEvent.getByLabel(stripDigiTagSrc, strips);
-     iEvent.getByLabel(wireDigiTagSrc, wires);
-     iEvent.getByLabel(compDigiTagSrc, compars);
-     iEvent.getByLabel(alctDigiTagSrc, alcts);
-     iEvent.getByLabel(clctDigiTagSrc, clcts);
-     iEvent.getByLabel(corrlctDigiTagSrc, correlatedlcts);
+     iEvent.getByToken(wireDigiTagSrc, wires);
+     iEvent.getByToken(stripDigiTagSrc, strips);
+     iEvent.getByToken(compDigiTagSrc, compars);
+     iEvent.getByToken(alctDigiTagSrc, alcts);
+     iEvent.getByToken(clctDigiTagSrc, clcts);
+     iEvent.getByToken(corrlctDigiTagSrc, correlatedlcts);
    }
 
    edm::Handle<edm::PSimHitContainer> simHits;
-   if (isSIM) iEvent.getByLabel(simHitTagSrc, simHits);
+   if (isSIM) iEvent.getByToken(simHitTagSrc, simHits);
+
 
    ////////////////////////////////////////////////////////////////////////////////
    nEventsTotal++;
@@ -575,8 +584,9 @@ void UFCSCRootMaker::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
    LumiSect = iEvent.id().luminosityBlock();
    BunchCrossing = iEvent.bunchCrossing();
 
+
    //Lumi Details
-   if (isDATA && isFullRECO && LumiDet.isValid()){
+/*   if (isDATA && isFullRECO && LumiDet.isValid()){
      rawbxlumi = LumiDet->lumiValue(LumiDetails::kOCC1,iEvent.bunchCrossing());
      for (int i=0;i<3564;++i)
        {
@@ -595,15 +605,14 @@ void UFCSCRootMaker::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
 	 bx_LUMI[i]=-1;
        }
    }
-   
-
+ */  
 
 
    if(addMuons && isFullRECO) doMuons(muons,saMuons,cscSegments,recHits,PV,iEvent,iSetup,geometry_,cscGeom);
-   if(addTracks && isFullRECO) doTracks(genTracks);
+//   if(addTracks && isFullRECO) doTracks(genTracks);
    if(addRecHits &&  (isFullRECO || isLocalRECO)) doRecHits(recHits,simHits,saMuons,muons,cscGeom,iEvent);
    if(addSegments && (isFullRECO || isLocalRECO)) doSegments(cscSegments,cscGeom);
-   if(addTrigger && (isFullRECO || isLocalRECO || isRAW)) doTrigger(pCollection,hlt);
+//   if(addTrigger && (isFullRECO || isLocalRECO || isRAW)) doTrigger(pCollection,hlt);
    if(addDigis && isDIGI)
      {
        doStripDigis(strips, cscGeom);
@@ -616,7 +625,9 @@ void UFCSCRootMaker::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
    if(addCalibrations && nEventsTotal == 1) doCalibrations(iSetup);
 
    //Fill the tree
-   if((addRecHits && recHits2D_nRecHits2D > 0 && (isFullRECO || isLocalRECO) ) || !addRecHits) tree->Fill();
+//cout << "nRHs: " << recHits2D_nRecHits2D << endl;
+   if((addRecHits && recHits2D_nRecHits2D > 0 && (isFullRECO || isLocalRECO) ) /*|| !addRecHits*/) {tree->Fill();}
+
 
    //clear some vectors 
    cscSegments_recHitRecord_endcap.clear();
@@ -634,18 +645,20 @@ void UFCSCRootMaker::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
    muons_cscSegmentRecord_endcap.clear();
    muons_cscSegmentRecord_localY.clear();
    muons_cscSegmentRecord_localX.clear();
-   
+
 
 
 #ifdef THIS_IS_AN_EVENT_EXAMPLE
    Handle<ExampleData> pIn;
-   iEvent.getByLabel("example",pIn);
+   iEvent.getByToken("example",pIn);
 #endif
    
 #ifdef THIS_IS_AN_EVENTSETUP_EXAMPLE
    ESHandle<SetupData> pSetup;
    iSetup.get<SetupRecord>().get(pSetup);
 #endif
+
+
 }
 
 
@@ -678,15 +691,15 @@ void UFCSCRootMaker::beginLuminosityBlock(edm::LuminosityBlock const& lumi, edm:
   using namespace std;
 
   //https://twiki.cern.ch/twiki/bin/viewauth/CMS/LumiCalc
-  edm::Handle<LumiSummary> l;
-  if(isDATA && isFullRECO)
+//  edm::Handle<LumiSummary> l;
+/*  if(isDATA && isFullRECO)
     {
-      lumi.getByLabel("lumiProducer", l); 
+      lumi.getByToken("lumiProducer", l); 
       if (!l.isValid()){ avgInstantLumi = -999;}
       else{ avgInstantLumi = l->avgInsDelLumi();}
-      
+*/      
       //Corrected Lumi
-      edm::ESHandle<LumiCorrectionParam> datahandle;
+/*      edm::ESHandle<LumiCorrectionParam> datahandle;
       iSetup.getData(datahandle);
       int corrfac = -1;
       if(datahandle.isValid())
@@ -694,8 +707,9 @@ void UFCSCRootMaker::beginLuminosityBlock(edm::LuminosityBlock const& lumi, edm:
 	  const LumiCorrectionParam* mydata = datahandle.product();
 	  corrfac = mydata->getCorrection(avgInstantLumi);  
 	}
-      correctedAvgInstantLumi = avgInstantLumi*corrfac; //final lumi value=correction*raw lumi value
-    }
+*/
+//      correctedAvgInstantLumi = avgInstantLumi*corrfac; //final lumi value=correction*raw lumi value
+//    }
 
 }
 
@@ -705,10 +719,14 @@ void UFCSCRootMaker::endLuminosityBlock(edm::LuminosityBlock const&, edm::EventS
 }
 
 // ------------ method fills 'descriptions' with the allowed parameters for the module  ------------
-void UFCSCRootMaker::fillDescriptions(edm::ConfigurationDescriptions& descriptions) 
+/*void UFCSCRootMaker::fillDescriptions(edm::ConfigurationDescriptions& descriptions) 
 {
   using namespace edm;
   ParameterSetDescription desc;
+
+
+
+
   desc.addUntracked<InputTag>("muonSrc",edm::InputTag("muons"))->setComment("Muon Input Tag. default: muons");
   desc.addUntracked<InputTag>("vertexSrc",edm::InputTag("goodOfflinePrimaryVertices"))->setComment("Vertex Input Tag. default: goodOfflinePrimaryVertices");
   desc.addUntracked<InputTag>("standAloneMuonsSrc",edm::InputTag("standAloneMuons"))->setComment("StandAlone Muons Input Tag. default: standAloneMuons");
@@ -741,7 +759,7 @@ void UFCSCRootMaker::fillDescriptions(edm::ConfigurationDescriptions& descriptio
   desc.addOptionalUntracked<bool>("addCalibrations",false)->setComment("Add calibration info into tree");
   descriptions.add("cscRootMaker",desc);
 }
-
+*/
 
 
 void UFCSCRootMaker::doMuons(edm::Handle<reco::MuonCollection> muons, edm::Handle<reco::TrackCollection> saMuons, edm::Handle<CSCSegmentCollection> cscSegments, edm::Handle<CSCRecHit2DCollection> recHits,
@@ -960,7 +978,7 @@ UFCSCRootMaker::doRecHits(edm::Handle<CSCRecHit2DCollection> recHits, edm::Handl
 {
 
   edm::Handle<CSCStripDigiCollection> myStrips;
-  if(isDIGI) iEvent.getByLabel(stripDigiTagSrc, myStrips);
+  if(isDIGI) iEvent.getByToken(stripDigiTagSrc, myStrips);
 
    // RecHits2D
    counter = 0;
@@ -1137,7 +1155,7 @@ UFCSCRootMaker::doRecHits(edm::Handle<CSCRecHit2DCollection> recHits, edm::Handl
        {
 	 int centerid     =  (*dRHIter).nStrips()/2;
 	 int centerStrip =  (*dRHIter).channels(centerid);
-	 float  rHsignal = getthisSignal(*myStrips, idrec, centerStrip);
+	 double  rHsignal = getthisSignal(*myStrips, idrec, centerStrip);
 	 recHits2D_ADCSignal[counter] = rHsignal;
        }	 
 	 
@@ -1165,8 +1183,8 @@ UFCSCRootMaker::doRecHits(edm::Handle<CSCRecHit2DCollection> recHits, edm::Handl
      if (isSIM)
        {
 
-	 float mindiff = 1000;
-	 float mindiffX = 99;
+	 double mindiff = 1000;
+	 double mindiffX = 99;
 	 // If MC, find closest muon simHit to check resolution:
 	 edm::PSimHitContainer::const_iterator dSHsimIter;
 	 for (dSHsimIter = simHits->begin(); dSHsimIter != simHits->end(); dSHsimIter++){
@@ -1199,7 +1217,7 @@ UFCSCRootMaker::doRecHits(edm::Handle<CSCRecHit2DCollection> recHits, edm::Handl
    }
    recHits2D_nRecHits2D = counter;
 
-
+//cout << "nRH: " << counter << endl;
    
    counter = 0;
    //SimHits
@@ -1243,10 +1261,10 @@ UFCSCRootMaker::doRecHits(edm::Handle<CSCRecHit2DCollection> recHits, edm::Handl
 }
 
 
-float UFCSCRootMaker::getthisSignal(const CSCStripDigiCollection& stripdigis, CSCDetId idRH, int centerStrip){
+double UFCSCRootMaker::getthisSignal(const CSCStripDigiCollection& stripdigis, CSCDetId idRH, int centerStrip){
 	// Loop over strip digis responsible for this recHit
 	CSCStripDigiCollection::DigiRangeIterator sIt;
-	float thisADC = 0.;
+	double thisADC = 0.;
 	//bool foundRHid = false;
 	// std::cout<<"iD   S/R/C/L = "<<idRH<<"    "<<idRH.station()<<"/"<<idRH.ring()<<"/"<<idRH.chamber()<<"/"<<idRH.layer()<<std::endl;
 	for (sIt = stripdigis.begin(); sIt != stripdigis.end(); sIt++){
@@ -1266,8 +1284,8 @@ float UFCSCRootMaker::getthisSignal(const CSCStripDigiCollection& stripdigis, CS
 				int thisStrip = digiItr->getStrip();
 				//std::cout<<" thisStrip = "<<thisStrip<<" centerStrip = "<<centerStrip<<std::endl;
 				std::vector<int> myADCVals = digiItr->getADCCounts();
-				float thisPedestal = 0.5*(float)(myADCVals[0]+myADCVals[1]);
-				float Signal = (float) myADCVals[3];
+				double thisPedestal = 0.5*(double)(myADCVals[0]+myADCVals[1]);
+				double Signal = (double) myADCVals[3];
 				if (thisStrip == (centerStrip)){
 					thisADC = Signal-thisPedestal;
 					//if(thisADC >= 0. && thisADC <2.) {std::cout << " Attention2 :: The Signal is equal to the pedestal " << std::endl;
@@ -1343,7 +1361,7 @@ UFCSCRootMaker::doSegments(edm::Handle<CSCSegmentCollection> cscSegments, edm::E
      if (nRH >= 1 )
        {
 	 //Store the recHit times of a segment in a vector for later sorting
-	 vector<float> non_zero;	
+	 vector<double> non_zero;	
 	 CLHEP::HepMatrix sp(6,1);
 	 CLHEP::HepMatrix se(6,1);
 	 for ( vector<CSCRecHit2D>::const_iterator iRH = theseRecHits.begin(); iRH != theseRecHits.end(); iRH++) {
@@ -1370,7 +1388,7 @@ UFCSCRootMaker::doSegments(edm::Handle<CSCSegmentCollection> cscSegments, edm::E
 	       int kStation = idrec.station();
 	       int kLayer   = idrec.layer();
 
-	       float stpos = (*iRH).positionWithinStrip();
+	       double stpos = (*iRH).positionWithinStrip();
 	       se(kLayer,1) = (*iRH).errorWithinStrip();
 	       // Take into account half-strip staggering of layers (ME1/1 has no staggering)
 	       if (kStation == 1 && (kRing == 1 || kRing == 4)) sp(kLayer,1) = stpos + centerStrip;
@@ -1385,7 +1403,7 @@ UFCSCRootMaker::doSegments(edm::Handle<CSCSegmentCollection> cscSegments, edm::E
 	 //Sort the vector of hit times for this segment and average the center two
 	 sort(non_zero.begin(),non_zero.end());
 	 int middle_index = non_zero.size()/2;
-	 float average_two = (non_zero.at(middle_index-1) + non_zero.at(middle_index))/2.;
+	 double average_two = (non_zero.at(middle_index-1) + non_zero.at(middle_index))/2.;
 	 if(non_zero.size()%2) average_two = non_zero.at(middle_index);
 	 
 	 double distToIP = sqrt(globalPosition.x()*globalPosition.x()+globalPosition.y()*globalPosition.y()+globalPosition.z()*globalPosition.z());
@@ -1397,7 +1415,7 @@ UFCSCRootMaker::doSegments(edm::Handle<CSCSegmentCollection> cscSegments, edm::E
 	 // Fit all points except layer 3, then compare expected value for layer 3 to reconstructed value
 	 if (nRH == 6)
 	   {
-	     float expected = fitX(sp,se);
+	     double expected = fitX(sp,se);
 	     cscSegments_Resolution_residual[counter] = expected - sp(3,1);
 	     cscSegments_Resolution_pull[counter] = cscSegments_Resolution_residual[counter]/se(3,1);
 	   }
@@ -1413,7 +1431,7 @@ UFCSCRootMaker::doSegments(edm::Handle<CSCSegmentCollection> cscSegments, edm::E
      cscSegments_recHitRecord_localX.push_back(recHitRecord_localX);
    }
    cscSegments_nSegments = counter;
-
+//cout << "nSeg: " << counter << endl;
 }
 
 
@@ -1428,9 +1446,9 @@ void UFCSCRootMaker::doNonAssociatedRecHits(edm::Handle<CSCSegmentCollection> cs
     for ( std::vector<CSCRecHit2D>::const_iterator iRH = theseRecHits.begin(); iRH != theseRecHits.end(); iRH++) {
       CSCDetId idRH = (CSCDetId)(*iRH).cscDetId();
       LocalPoint lpRH = (*iRH).localPosition();
-      float xrec = lpRH.x();
-      float yrec = lpRH.y();
-      float zrec = lpRH.z();
+      double xrec = lpRH.x();
+      double yrec = lpRH.y();
+      double zrec = lpRH.z();
       bool RHalreadyinMap = false;
       //Store the rechits associated with segments into a Map
       multimap<CSCDetId , CSCRecHit2D>::iterator segRHit;
@@ -1439,9 +1457,9 @@ void UFCSCRootMaker::doNonAssociatedRecHits(edm::Handle<CSCSegmentCollection> cs
 	for( ; segRHit != SegRechits.upper_bound(idRH); ++segRHit){
 	  //for( segRHit = SegRechits.begin(); segRHit != SegRechits.end() ;++segRHit){
 	  LocalPoint lposRH = (segRHit->second).localPosition();
-	  float xpos = lposRH.x();
-	  float ypos = lposRH.y();
-	  float zpos = lposRH.z();
+	  double xpos = lposRH.x();
+	  double ypos = lposRH.y();
+	  double zpos = lposRH.z();
 	  if ( xrec == xpos && yrec == ypos && zrec == zpos){
 	  RHalreadyinMap = true;
 	  //std::cout << " Already exists " <<std ::endl;
@@ -1457,13 +1475,13 @@ void UFCSCRootMaker::doNonAssociatedRecHits(edm::Handle<CSCSegmentCollection> cs
     
     CSCDetId idRH = allRHiter->first;
     LocalPoint lpRH = (allRHiter->second).localPosition();
-    float xrec = lpRH.x();
-    float yrec = lpRH.y();
-    float zrec = lpRH.z();
+    double xrec = lpRH.x();
+    double yrec = lpRH.y();
+    double zrec = lpRH.z();
     
     bool foundmatch = false;
-    float dclose =1000.;
-    float d      = 0.;
+    double dclose =1000.;
+    double d      = 0.;
     multimap<CSCDetId , CSCRecHit2D>::iterator segRHit;
     segRHit = SegRechits.find(idRH);
     if (segRHit != SegRechits.end())
@@ -1472,9 +1490,9 @@ void UFCSCRootMaker::doNonAssociatedRecHits(edm::Handle<CSCSegmentCollection> cs
 	  {
 	    
 	    LocalPoint lposRH = (segRHit->second).localPosition();
-	    float xpos = lposRH.x();
-	    float ypos = lposRH.y();
-	    float zpos = lposRH.z();
+	    double xpos = lposRH.x();
+	    double ypos = lposRH.y();
+	    double zpos = lposRH.z();
 	    
 	    if ( xrec == xpos && yrec == ypos && zrec == zpos){foundmatch = true;}
 	    d = sqrt(pow(xrec-xpos,2)+pow(yrec-ypos,2)+pow(zrec-zpos,2));
@@ -1509,16 +1527,16 @@ void UFCSCRootMaker::doNonAssociatedRecHits(edm::Handle<CSCSegmentCollection> cs
 
     // Store rechit as a Local Point:
     LocalPoint rhitlocal = (iter->second).localPosition();  
-    float xreco = rhitlocal.x();
-    float yreco = rhitlocal.y();
+    double xreco = rhitlocal.x();
+    double yreco = rhitlocal.y();
     
     // Find the strip containing this hit
     int centerid    =  (iter->second).nStrips()/2;
     int centerStrip =  (iter->second).channels(centerid);
 
     // Find the charge associated with this hit
-    float rHSumQ = 0;
-    float sumsides=0.;
+    double rHSumQ = 0;
+    double sumsides=0.;
     int adcsize=(iter->second).nStrips()*(iter->second).nTimeBins();
     for ( unsigned int i=0; i< (iter->second).nStrips(); i++) {
       for ( unsigned int j=0; j< (iter->second).nTimeBins()-1; j++) {
@@ -1527,11 +1545,11 @@ void UFCSCRootMaker::doNonAssociatedRecHits(edm::Handle<CSCSegmentCollection> cs
       }
     }
 
-    float rHratioQ = sumsides/rHSumQ;
+    double rHratioQ = sumsides/rHSumQ;
     if (adcsize != 12) rHratioQ = -99;
 
     // Get the signal timing of this hit
-    float rHtime = (iter->second).tpeak()/50;
+    double rHtime = (iter->second).tpeak()/50;
 
     // Get the width of this hit
     int rHwidth = getWidth(*strips, idrec, centerStrip);
@@ -1541,8 +1559,8 @@ void UFCSCRootMaker::doNonAssociatedRecHits(edm::Handle<CSCSegmentCollection> cs
 
     // Transform hit position from local chamber geometry to global CMS geom
     GlobalPoint rhitglobal= csclayer->toGlobal(rhitlocal);
-    float grecx   =  rhitglobal.x();
-    float grecy   =  rhitglobal.y();
+    double grecx   =  rhitglobal.x();
+    double grecy   =  rhitglobal.y();
 
    // Simple occupancy variables
     int kCodeBroad  = cEndcap * ( 4*(kStation-1) + kRing) ;
@@ -1583,8 +1601,8 @@ void UFCSCRootMaker::doNonAssociatedRecHits(edm::Handle<CSCSegmentCollection> cs
     
     // Store rechit as a Local Point:
     LocalPoint rhitlocal = (iter->second).localPosition();  
-    float xreco = rhitlocal.x();
-    float yreco = rhitlocal.y();
+    double xreco = rhitlocal.x();
+    double yreco = rhitlocal.y();
     
     // Find the strip containing this hit
     int centerid    =  (iter->second).nStrips()/2;
@@ -1592,8 +1610,8 @@ void UFCSCRootMaker::doNonAssociatedRecHits(edm::Handle<CSCSegmentCollection> cs
     
     // Find the charge associated with this hit
     
-    float rHSumQ = 0;
-    float sumsides=0.;
+    double rHSumQ = 0;
+    double sumsides=0.;
     int adcsize=(iter->second).nStrips()*(iter->second).nTimeBins();
     for ( unsigned int i=0; i< (iter->second).nStrips(); i++) {
       for ( unsigned int j=0; j< (iter->second).nTimeBins()-1; j++) {
@@ -1602,11 +1620,11 @@ void UFCSCRootMaker::doNonAssociatedRecHits(edm::Handle<CSCSegmentCollection> cs
       }
     }
     
-    float rHratioQ = sumsides/rHSumQ;
+    double rHratioQ = sumsides/rHSumQ;
     if (adcsize != 12) rHratioQ = -99;
     
     // Get the signal timing of this hit
-    float rHtime = (iter->second).tpeak()/50;
+    double rHtime = (iter->second).tpeak()/50;
     
     // Get the width of this hit
     int rHwidth = getWidth(*strips, idrec, centerStrip);
@@ -1617,8 +1635,8 @@ void UFCSCRootMaker::doNonAssociatedRecHits(edm::Handle<CSCSegmentCollection> cs
     
     // Transform hit position from local chamber geometry to global CMS geom
     GlobalPoint rhitglobal= csclayer->toGlobal(rhitlocal);
-    float grecx   =  rhitglobal.x();
-    float grecy   =  rhitglobal.y();
+    double grecx   =  rhitglobal.x();
+    double grecy   =  rhitglobal.y();
     
     // Simple occupancy variables
     int kCodeBroad  = cEndcap * ( 4*(kStation-1) + kRing) ;
@@ -1663,14 +1681,14 @@ void UFCSCRootMaker::doNonAssociatedRecHits(edm::Handle<CSCSegmentCollection> cs
 // and removes hit in layer 3.  It then returns the expected position value in layer 3
 // based on the fit.
 //-------------------------------------------------------------------------------------
-float UFCSCRootMaker::fitX(CLHEP::HepMatrix points, CLHEP::HepMatrix errors){
+double UFCSCRootMaker::fitX(CLHEP::HepMatrix points, CLHEP::HepMatrix errors){
 
-  float S   = 0;
-  float Sx  = 0;
-  float Sy  = 0;
-  float Sxx = 0;
-  float Sxy = 0;
-  float sigma2 = 0;
+  double S   = 0;
+  double Sx  = 0;
+  double Sy  = 0;
+  double Sxx = 0;
+  double Sxy = 0;
+  double sigma2 = 0;
 
   for (int i=1;i<7;i++){
     if (i != 3){
@@ -1683,12 +1701,12 @@ float UFCSCRootMaker::fitX(CLHEP::HepMatrix points, CLHEP::HepMatrix errors){
     }
   }
 
-  float delta = S*Sxx - Sx*Sx;
-  float intercept = (Sxx*Sy - Sx*Sxy)/delta;
-  float slope = (S*Sxy - Sx*Sy)/delta;
+  double delta = S*Sxx - Sx*Sx;
+  double intercept = (Sxx*Sy - Sx*Sxy)/delta;
+  double slope = (S*Sxy - Sx*Sy)/delta;
 
-  //float chi = 0;
-  //float chi2 = 0;
+  //double chi = 0;
+  //double chi2 = 0;
 
   // calculate chi2 (not currently used)
   //for (int i=1;i<7;i++){
@@ -1802,10 +1820,10 @@ UFCSCRootMaker::doStripDigis(edm::Handle<CSCStripDigiCollection> strips, edm::ES
 	int myStrip = stripIter->getStrip();
 	std::vector<int> myADCVals = stripIter->getADCCounts();
 	bool thisStripFired = false;
-	float thisPedestal = 0.5*(float)(myADCVals[0]+myADCVals[1]);
-	float threshold = 13.3 ;
-	float diff = 0.;
-	float thisSignal = (1./6)*(myADCVals[2]+myADCVals[3]+myADCVals[4]+myADCVals[5]+myADCVals[6]+myADCVals[7]);
+	double thisPedestal = 0.5*(double)(myADCVals[0]+myADCVals[1]);
+	double threshold = 13.3 ;
+	double diff = 0.;
+	double thisSignal = (1./6)*(myADCVals[2]+myADCVals[3]+myADCVals[4]+myADCVals[5]+myADCVals[6]+myADCVals[7]);
 	
 	if(id.station() == 1 && id.ring() == 4)
 	  {
@@ -1814,7 +1832,7 @@ UFCSCRootMaker::doStripDigis(edm::Handle<CSCStripDigiCollection> strips, edm::ES
 	
 	int tracker = 0;
 	for (unsigned int iCount = 0; iCount < myADCVals.size(); iCount++) {
-	  diff = (float)myADCVals[iCount]-thisPedestal;
+	  diff = (double)myADCVals[iCount]-thisPedestal;
 	  if (diff > threshold) { thisStripFired = true; }
 	if (iCount > 0 && diff > (myADCVals[iCount-1]-thisPedestal)) {tracker = iCount;}
 	
@@ -1827,7 +1845,7 @@ UFCSCRootMaker::doStripDigis(edm::Handle<CSCStripDigiCollection> strips, edm::ES
 	  firedStripDigis_ID_layer[nStripsFired] = id.layer();
 	  firedStripDigis_ID_chamber[nStripsFired] = id.chamber();
 	  firedStripDigis_ID_strip[nStripsFired] = myStrip;
-	  float ADC = thisSignal - thisPedestal;
+	  double ADC = thisSignal - thisPedestal;
 	  firedStripDigis_ADCTotal[nStripsFired] = ADC;
 	  firedStripDigis_ADCMax[nStripsFired] = myADCVals[tracker];
 	  firedStripDigis_tbinMax[nStripsFired] = tracker;
@@ -1841,7 +1859,7 @@ UFCSCRootMaker::doStripDigis(edm::Handle<CSCStripDigiCollection> strips, edm::ES
   
   if (nStripsFired == 0) nStripsFired = -1;
   firedStripDigis_nStripDigis = nStripsFired;
-  
+//cout << "nStrip: "   << nStripsFired << endl;
 }
 
 
@@ -1884,7 +1902,7 @@ UFCSCRootMaker::doWireDigis(edm::Handle<CSCWireDigiCollection> wires, edm::ESHan
   // this way you can zero suppress but still store info on # events with no digis
   if (nWireGroupsTotal == 0) nWireGroupsTotal = -1;
   firedWireDigis_nWireDigis = nWireGroupsTotal;
-  
+//cout << "nwire: " << nWireGroupsTotal << endl;
 }
 
 
@@ -1933,6 +1951,7 @@ void UFCSCRootMaker::doCompTiming(const CSCComparatorDigiCollection& compars) {
 	    comparatorDigis_ID_chamber[counter] = id.chamber();
 	    comparatorDigis_ID_station[counter] = id.station();
 	    comparatorDigis_ID_strip[counter] = strip;
+            comparatorDigis_ID_halfStrip[counter] = (*digiIt).getHalfStrip();
 	    comparatorDigis_ID_layer[counter] = id.layer(); //idlayer?
 	    comparatorDigis_ID_ring[counter] = id.ring();
 	    comparatorDigis_cfeb[counter] = cfeb;
@@ -2071,7 +2090,7 @@ void UFCSCRootMaker::doLCTDigis( edm::Handle<CSCALCTDigiCollection> alcts, edm::
   
   /// Get a handle to the FED data collection
   edm::Handle<FEDRawDataCollection> rawdata;
-  event.getByLabel(fedRawTagSrc, rawdata);
+  event.getByToken(fedRawTagSrc, rawdata);
   bool goodEvent = false;
   // If set selective unpacking mode 
   // hardcoded examiner mask below to check for DCC and DDU level errors will be used first
@@ -2097,13 +2116,13 @@ void UFCSCRootMaker::doLCTDigis( edm::Handle<CSCALCTDigiCollection> alcts, edm::
       ///examine event for integrity
       //CSCDCCExaminer examiner;
       examiner = new CSCDCCExaminer();
-      examiner->output1().redirect(examiner_out);
-      examiner->output2().redirect(examiner_err);
+//      examiner->output1().redirect(examiner_out);
+//      examiner->output2().redirect(examiner_err);
       if( examinerMask&0x40000 ) examiner->crcCFEB(1);
       if( examinerMask&0x8000  ) examiner->crcTMB (1);
       if( examinerMask&0x0400  ) examiner->crcALCT(1);
-      examiner->output1().show();
-      examiner->output2().show();
+//      examiner->output1().show();
+//      examiner->output2().show();
       examiner->setMask(examinerMask);
       const short unsigned int *data = (short unsigned int *)fedData.data();
      
@@ -2455,7 +2474,7 @@ void UFCSCRootMaker::doGasGain(const CSCWireDigiCollection& wirecltn,  const CSC
 	    if(recIt->nStrips()==3)  {        
 	      // get 3X3 ADC Sum
 	      unsigned int binmx=0;
-	      float adcmax=0.0;
+	      double adcmax=0.0;
 	      
 	      for(unsigned int i=0;i<recIt->nStrips();i++) 
 		for(unsigned int j=0;j<recIt->nTimeBins();j++)
@@ -2464,7 +2483,7 @@ void UFCSCRootMaker::doGasGain(const CSCWireDigiCollection& wirecltn,  const CSC
 		    binmx=j;
 		  }
 	      
-	      float adc_3_3_sum=0.0;
+	      double adc_3_3_sum=0.0;
 	      //well, this really only works for 3 strips in readout - not sure the right fix for general case
 	      for(unsigned int i=0;i<recIt->nStrips();i++) 
 		for(unsigned int j=binmx-1;j<=binmx+1;j++) 
@@ -2599,8 +2618,8 @@ int UFCSCRootMaker::getWidth(const CSCStripDigiCollection& stripdigis, CSCDetId 
 				  for( ; it != last; ++it ) {
 					  int strip = it->getStrip();
 					  std::vector<int> myADCVals = it->getADCCounts();
-					  float thisPedestal = 0.5*(float)(myADCVals[0]+myADCVals[1]);
-					  if(((float)myADCVals[3]-thisPedestal) < 6 || widthpos == 10 || it==last){break;}
+					  double thisPedestal = 0.5*(double)(myADCVals[0]+myADCVals[1]);
+					  if(((double)myADCVals[3]-thisPedestal) < 6 || widthpos == 10 || it==last){break;}
 					   if(strip != centerStrip){ widthpos += 1;
 					   }
 				  }
@@ -2608,8 +2627,8 @@ int UFCSCRootMaker::getWidth(const CSCStripDigiCollection& stripdigis, CSCDetId 
 				  for( ; itr != first; --itr) {
 					  int strip = itr->getStrip();
 					  std::vector<int> myADCVals = itr->getADCCounts();
-					  float thisPedestal = 0.5*(float)(myADCVals[0]+myADCVals[1]);
-					  if(((float)myADCVals[3]-thisPedestal) < 6 || widthneg == 10 || itr==first){break;}	 
+					  double thisPedestal = 0.5*(double)(myADCVals[0]+myADCVals[1]);
+					  if(((double)myADCVals[3]-thisPedestal) < 6 || widthneg == 10 || itr==first){break;}	 
 					  if(strip != centerStrip) {widthneg += 1 ; 
 					  }
 				  }
@@ -2625,11 +2644,11 @@ int UFCSCRootMaker::getWidth(const CSCStripDigiCollection& stripdigis, CSCDetId 
 
 
 
-bool UFCSCRootMaker::withinSensitiveRegion(LocalPoint localPos, const std::array<const float, 4> & layerBounds, int station, int ring, float shiftFromEdge, float shiftFromDeadZone){
+bool UFCSCRootMaker::withinSensitiveRegion(LocalPoint localPos, const std::array<const double, 4> & layerBounds, int station, int ring, double shiftFromEdge, double shiftFromDeadZone){
 //---- check if it is in a good local region (sensitive area - geometrical and HV boundaries excluded) 
   bool pass = false;
 
-  float y_center = 0.;
+  double y_center = 0.;
   double yUp = layerBounds[3] + y_center;
   double yDown = - layerBounds[3] + y_center;
   double xBound1Shifted = layerBounds[0] - shiftFromEdge;//
@@ -2639,8 +2658,8 @@ bool UFCSCRootMaker::withinSensitiveRegion(LocalPoint localPos, const std::array
   double yBorder =  lineSlope*abs(localPos.x()) + lineConst;
       
   //bool withinChamberOnly = false;// false = "good region"; true - boundaries only
-  std::vector <float> deadZoneCenter(6);
-  float cutZone = shiftFromDeadZone;//cm
+  std::vector <double> deadZoneCenter(6);
+  double cutZone = shiftFromDeadZone;//cm
   //---- hardcoded... not good
   if(station>1 && station<5){
     if(2==ring){
@@ -2889,6 +2908,7 @@ UFCSCRootMaker::bookTree(TTree *tree)
   tree->Branch("vertex_nVertex",&vertex_nVertex,"vertex_nVertex/I");
 
   //Lumi
+/*
   tree->Branch("avgInstantLumi",&avgInstantLumi,"avgInstantLumi/D");
   tree->Branch("correctedAvgInstantLumi",&correctedAvgInstantLumi,"correctedAvgInstantLumi/D");
   tree->Branch("rawbxlumi",&rawbxlumi,"rawbxlumi/D");
@@ -2906,7 +2926,6 @@ UFCSCRootMaker::bookTree(TTree *tree)
   tree->Branch("tracks_p",  tracks_p,  "tracks_p[tracks_nTracks]/D");
   tree->Branch("tracks_eta",  tracks_eta,  "tracks_eta[tracks_nTracks]/D");
   tree->Branch("tracks_phi",  tracks_phi,  "tracks_phi[tracks_nTracks]/D");
-
   // SimHits
   tree->Branch("simHits_nSimHits", &simHits_nSimHits, "simHits_nSimHits/I");
   tree->Branch("simHits_particleType", simHits_particleType,  "simHits_particleType[simHits_nSimHits]/I");
@@ -2925,7 +2944,7 @@ UFCSCRootMaker::bookTree(TTree *tree)
   tree->Branch("simHits_momentum", simHits_momentum,  "simHits_momentum[simHits_nSimHits]/D");
   tree->Branch("simHits_phi", simHits_phi,  "simHits_phi[simHits_nSimHits]/D");
   tree->Branch("simHits_theta", simHits_theta,  "simHits_theta[simHits_nSimHits]/D");
-
+*/
 
   // CSCRecHits2D
   tree->Branch("recHits2D_nRecHits2D", &recHits2D_nRecHits2D,"recHits2D_nRecHits2D/I");
@@ -3047,10 +3066,9 @@ UFCSCRootMaker::bookTree(TTree *tree)
   tree->Branch("muons_cscSegmentRecord_endcap", &muons_cscSegmentRecord_endcap);
   tree->Branch("muons_cscSegmentRecord_localY", &muons_cscSegmentRecord_localY);
   tree->Branch("muons_cscSegmentRecord_localX", &muons_cscSegmentRecord_localX);
- 
 
 
-
+/*
   // L1 GMT
   tree->Branch("l1Trigger_CSC",  &l1Trigger_CSC,  "l1Trigger_CSC/O");
   tree->Branch("l1Trigger_DT",  &l1Trigger_DT,  "l1Trigger_DT/O");
@@ -3061,7 +3079,7 @@ UFCSCRootMaker::bookTree(TTree *tree)
   // HLT Trigger
   tree->Branch("hltTrigger_nBits", &hltTrigger_nBits , "hltTrigger_nBits/I");
   tree->Branch("hltTrigger_bits",  hltTrigger_bits,  "hltTrigger_bits[hltTrigger_nBits]/I");
-
+*/
   // Standalone Muons
   tree->Branch("standaloneMuons_nMuons", &standaloneMuons_nMuons , "standaloneMuons_nMuons/I");
   tree->Branch("standaloneMuons_p", standaloneMuons_p , "standaloneMuons_p[standaloneMuons_nMuons]/D");
@@ -3122,6 +3140,7 @@ UFCSCRootMaker::bookTree(TTree *tree)
   tree->Branch("comparatorDigis_ID_ring", comparatorDigis_ID_ring,"comparatorDigis_ID_ring[comparatorDigis_nDigis]/I");
   tree->Branch("comparatorDigis_timeBin", comparatorDigis_timeBin,"comparatorDigis_timeBin[comparatorDigis_nDigis]/I");
   tree->Branch("comparatorDigis_cfeb", comparatorDigis_cfeb,"comparatorDigis_cfeb[comparatorDigis_nDigis]/I");
+  tree->Branch("comparatorDigis_ID_halfStrip", comparatorDigis_ID_halfStrip,"comparatorDigis_ID_halfStrip[comparatorDigis_nDigis]/I");
 
   //ALCTs
   tree->Branch("alct_nAlcts",&alct_nAlcts,"alct_nAlcts/I");
@@ -3205,7 +3224,6 @@ UFCSCRootMaker::bookTree(TTree *tree)
   tree->Branch("calibrations_NoiseMatrix_66", calibrations_NoiseMatrix_66,"calibrations_NoiseMatrix_66[calibrations_nCalib]/D");
   tree->Branch("calibrations_NoiseMatrix_67", calibrations_NoiseMatrix_67,"calibrations_NoiseMatrix_67[calibrations_nCalib]/D");
   tree->Branch("calibrations_NoiseMatrix_77", calibrations_NoiseMatrix_77,"calibrations_NoiseMatrix_77[calibrations_nCalib]/D");
-
   // Associated RecHits
   tree->Branch("assocRecHits_nAssocRH",&assocRecHits_nAssocRH,"assocRecHits_nAssocRH/I");
   tree->Branch("assocRecHits_codeBroad", assocRecHits_codeBroad,"assocRecHits_codeBroad[assocRecHits_nAssocRH]/I");
@@ -3257,7 +3275,6 @@ UFCSCRootMaker::bookTree(TTree *tree)
   tree->Branch("gasGain_endcap", gasGain_endcap,"gasGain_endcap[gasGain_nGasGain]/I");
   tree->Branch("gasGain_layer", gasGain_layer,"gasGain_layer[gasGain_nGasGain]/I");
   tree->Branch("gasGain_ADC3x3Sum", gasGain_ADC3x3Sum,"gasGain_ADC3x3Sum[gasGain_nGasGain]/D");
-
 
 }
 
