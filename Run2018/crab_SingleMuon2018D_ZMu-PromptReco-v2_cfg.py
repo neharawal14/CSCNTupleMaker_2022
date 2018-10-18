@@ -1,7 +1,7 @@
 from WMCore.Configuration import Configuration
 
 version = 'ZMu-PromptReco-v2'
-runEra = 'Run2018C'
+runEra = 'Run2018D'
 
 #____________________________________________________________||
 config = Configuration()

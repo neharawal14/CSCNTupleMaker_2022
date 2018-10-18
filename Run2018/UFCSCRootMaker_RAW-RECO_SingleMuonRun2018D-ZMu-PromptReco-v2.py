@@ -33,7 +33,7 @@ maxEvents = -1
 #MCGlobalTag='PH2_1K_FB_V6::All' for DYmumu_PU140
 #DataGlobalTag='76X_dataRun2_v19'
 #DataGlobalTag='76X_dataRun2_v15'
-DataGlobalTag='101X_dataRun2_Prompt_v11'
+DataGlobalTag='102X_dataRun2_Prompt_v1'
 doDebug = bool(False)
 ###############################
 
