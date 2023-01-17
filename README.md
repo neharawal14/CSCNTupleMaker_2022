@@ -13,3 +13,4 @@ git submodule init
 git submodule update
 scram b -j 8
 ```
+PS : Updated code for 2022 is in dev_2022 branch
