@@ -5,7 +5,7 @@
 ######################################################################
 import FWCore.ParameterSet.Config as cms
 doUnpacking = bool(True)
-
+import UFCSCSoftware.UFCSCRootMaker.cscRootMaker_cfi
 ########## Options ############
 isDATA = bool(True)
 isRAW = bool(True)
@@ -33,15 +33,15 @@ maxEvents = -1
 #MCGlobalTag='PH2_1K_FB_V6::All' for DYmumu_PU140
 #DataGlobalTag='76X_dataRun2_v19'
 #DataGlobalTag='76X_dataRun2_v15'
-DataGlobalTag='92X_dataRun2_Prompt_v11'
+DataGlobalTag='123X_dataRun3_Prompt_v12'
 doDebug = bool(False)
 ###############################
 
 ### Debug Printing ###
 if not isDATA :
-    print "Sample Type: MC"
+    print("Sample Type: MC")
 else :
-    print "Sample Type: Data"
+    print("Sample Type: Data")
                 
 #####################
 process = cms.Process("UFCSCRootMaker")
@@ -56,8 +56,21 @@ process.maxEvents = cms.untracked.PSet(input = cms.untracked.int32(maxEvents))
 process.load("FWCore.MessageLogger.MessageLogger_cfi")
 #process.MessageLogger.cerr.threshold = 'ERROR' # Options: INFO, WARNING, ERROR
 process.MessageLogger.cerr.FwkReport.reportEvery = 1000
-process.MessageLogger.destinations = ['cout', 'cerr']
-process.MessageLogger.suppressWarning.append('classByHitsGlb') # kill stupid RPC hit associator warning
+process.MessageLogger = cms.Service("MessageLogger",
+            destinations  = cms.untracked.vstring('cout','cerr'), 
+            suppressWarning= cms.untracked.vstring('classByHitsGlb'))
+#process.MessageLogger.destinations = ['cout', 'cerr']
+#process.MessageLogger.destinations = cms.untracked.vstring('cout', 'cerr')
+#ml = process.MessageLogger.clone()
+#dest = process.MessageLogger.destinations
+#files = cms.untracked.PSet()
+#for d in ['cout','cerr']:
+#   if 'cout' == d:
+#        continue
+#   if 'cerr' == d:
+#        continue
+#   setattr(files, d, getattr(ml,d.value()))
+#process.MessageLogger.suppressWarning.append('classByHitsGlb') # kill stupid RPC hit associator warning
 #process.MessageLogger.cerr.FwkJob.limit=1
 #process.MessageLogger.cerr.ERROR = cms.untracked.PSet( limit = cms.untracked.int32(1))
                                                        
@@ -122,20 +135,23 @@ process.source = cms.Source ("PoolSource",
                              )
 
 if isDATA:
-    process.source.fileNames = cms.untracked.vstring(DUMMYFILELIST
-# 'root://cmsxrootd.fnal.gov//store/data/Run2015D/SingleMuon/RAW-RECO/ZMu-16Dec2015-v1/10000/005D37B2-3CA9-E511-B9AF-001E67398223.root',
+    process.source.fileNames = cms.untracked.vstring(
+        # 'root://cmsxrootd.fnal.gov//store/data/Run2015D/SingleMuon/RAW-RECO/ZMu-16Dec2015-v1/10000/005D37B2-3CA9-E511-B9AF-001E67398223.root',
 # 'root://cmsxrootd.fnal.gov//store/data/Run2015D/SingleMuon/RAW-RECO/ZMu-16Dec2015-v1/10000/005D37B2-3CA9-E511-B9AF-001E67398223.root',
 # 'root://cmsxrootd.fnal.gov//store/data/Run2015D/SingleMuon/RAW-RECO/ZMu-16Dec2015-v1/10000/005D37B2-3CA9-E511-B9AF-001E67398223.root',
 # 'root://cmsxrootd.fnal.gov//store/data/Run2015D/SingleMuon/RAW-RECO/ZMu-16Dec2015-v1/10000/005D37B2-3CA9-E511-B9AF-001E67398223.root',
 # 'root://cmsxrootd.fnal.gov//store/data/Run2015D/SingleMuon/RAW-RECO/ZMu-16Dec2015-v1/10000/005D37B2-3CA9-E511-B9AF-001E67398223.root',
 #'root://cmsxrootd.fnal.gov//store/data/Run2016C/SingleMuon/RECO/PromptReco-v2/000/275/657/00000/00DFFD18-693B-E611-BDF2-02163E0140F2.root'
+        #'root://cmsxrootd.fnal.gov///store/data/Run2022B/SingleMuon/RAW-RECO/ZMu-PromptReco-v1/000/355/094/00000/cc6b5700-f548-4655-bdbd-5eda511a9090.root',
+        'root://cmsxrootd.fnal.gov///store/data/Run2022C/SingleMuon/RAW-RECO/ZMu-PromptReco-v1/000/355/872/00000/02f04890-4813-4992-b995-1e08f4905ab1.root', 
+        #'root://cmsxrootd.fnal.gov///store/data/Run2022B/SingleMuon/RAW-RECO/ZMu-PromptReco-v1/000/355/135/00000/306ec2d7-c1a8-4e83-9bfb-bc85d9fb0248.root',
         )
 else:
     process.source.fileNames = cms.untracked.vstring(DUMMYFILELIST)
     process.source.fileNames.extend( [
 #        '/store/relval/CMSSW_7_0_0/RelValTTbar/GEN-SIM-DIGI-RECO/START70_V6_FastSim-v2/00000/00743452-B498-E311-AD84-02163E00EAC9.root',
 #        'file:/cms/data/store/data/Run2012B/SingleMu/RECO/22Jan2013-v1/20040/F04E9749-2D74-E211-9EE4-E0CB4E19F9BC.root'
-        'root://cmsxrootd.fnal.gov//store/group/upgrade/muon/ME0GlobalReco/ME0MuonReRun_DY_SLHC23patch1_SegmentReRunFullRun_ForPublish/M-20_TuneZ2star_14TeV_6_2_0_SLHC23patch1_2023/DYToMuMu_M-20_TuneZ2star_14TeV-pythia6-tauola/DYToMuMu_M-20_TuneZ2star_14TeV-pythia6-tauola_2023SHCalNoTaper_PU140_Selectors_RECO/b52ce42d5986c94dc336f39e015d825e/output_100_2_p9i.root'
+        #'root://cmsxrootd.fnal.gov//store/group/upgrade/muon/ME0GlobalReco/ME0MuonReRun_DY_SLHC23patch1_SegmentReRunFullRun_ForPublish/M-20_TuneZ2star_14TeV_6_2_0_SLHC23patch1_2023/DYToMuMu_M-20_TuneZ2star_14TeV-pythia6-tauola/DYToMuMu_M-20_TuneZ2star_14TeV-pythia6-tauola_2023SHCalNoTaper_PU140_Selectors_RECO/b52ce42d5986c94dc336f39e015d825e/output_100_2_p9i.root'
         ]
     )
     
@@ -176,6 +192,7 @@ process.nEventsTotal = cms.EDProducer("EventCountProducer")
 
 #RM
 process.load("UFCSCSoftware.UFCSCRootMaker.cscRootMaker_cfi")
+
 process.cscRootMaker.isFullRECO = cms.untracked.bool(isFullRECO)
 process.cscRootMaker.isLocalRECO = cms.untracked.bool(isLocalRECO)
 process.cscRootMaker.isGEN = cms.untracked.bool(isGEN)

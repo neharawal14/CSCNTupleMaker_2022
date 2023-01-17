@@ -77,7 +77,10 @@
 #include "EventFilter/CSCRawToDigi/interface/CSCCFEBData.h"
 #include "EventFilter/CSCRawToDigi/interface/CSCALCTHeader.h"
 #include "EventFilter/CSCRawToDigi/interface/CSCAnodeData.h"
-#include "EventFilter/CSCRawToDigi/interface/CSCCLCTData.h"
+// In recent 2022 , CSCLCTData is changed to CSCComparatorData
+//#include "DataFormats/CSCDigi/interface/CSCComparatorData.h"
+//#include "EventFilter/CSCRawToDigi/interface/CSCCLCTData.h"
+#include "EventFilter/CSCRawToDigi/interface/CSCComparatorData.h"
 #include "EventFilter/CSCRawToDigi/interface/CSCDDUEventData.h"
 #include "EventFilter/CSCRawToDigi/interface/CSCTMBData.h"
 #include "EventFilter/CSCRawToDigi/interface/CSCTMBHeader.h"
@@ -188,6 +191,22 @@ private:
   int getWidth(const CSCStripDigiCollection& stripdigis, CSCDetId idRH, int centerStrip);
   void doGasGain(const CSCWireDigiCollection& wirecltn,  const CSCStripDigiCollection&   strpcltn, const CSCRecHit2DCollection& rechitcltn);  
   bool withinSensitiveRegion(LocalPoint localPos, const std::array<const double, 4> & layerBounds, int station, int ring, double shiftFromEdge, double shiftFromDeadZone);
+
+  edm::ESGetToken<CSCGeometry, MuonGeometryRecord> cscGeomToken_;
+  edm::ESGetToken<GlobalTrackingGeometry, GlobalTrackingGeometryRecord> geometryToken_;
+  edm::ESGetToken<CSCCrateMap,CSCCrateMapRcd> hcrateToken_; 
+  edm::ESGetToken<CSCDBCrosstalk, CSCDBCrosstalkRcd> hCrosstalkToken_;
+  edm::ESGetToken<CSCDBNoiseMatrix,CSCDBNoiseMatrixRcd> hNoiseMatrixToken_;
+  edm::ESGetToken<CSCDBGains,CSCDBGainsRcd> hGainsToken_;
+  edm::ESGetToken<CSCDBPedestals,CSCDBPedestalsRcd> hPedestalsToken_;
+ 
+  edm::ESHandle<CSCGeometry> cscGeomHandle;
+  edm::ESHandle<GlobalTrackingGeometry> geometryHandle;
+  edm::ESHandle<CSCCrateMap> hcrate;
+  edm::ESHandle<CSCDBCrosstalk> hCrosstalk;
+  edm::ESHandle<CSCDBNoiseMatrix> hNoiseMatrix;
+  edm::ESHandle<CSCDBGains> hGains;
+  edm::ESHandle<CSCDBPedestals> hPedestals;
 
   std::vector<CSCSegment> findMuonSegments(edm::ESHandle<GlobalTrackingGeometry> theTrackingGeometry, const reco::Track& Track, 
 					   edm::Handle<CSCSegmentCollection> cscSegments, edm::Handle<CSCRecHit2DCollection> recHits, 
@@ -444,8 +463,13 @@ private:
 
 //Constructor
 UFCSCRootMaker::UFCSCRootMaker(const edm::ParameterSet& iConfig) :
+    
   histContainer_(),
   muonSrc(consumes<reco::MuonCollection>(iConfig.getUntrackedParameter<edm::InputTag>("muonSrc"))),
+  //geometryToken_(consumes<GlobalTrackingGeometryRecord>(edm::ESInputTag())),
+//  cscGeomToken_(esConsumes()),
+//  cscGeomToken_ = esConsumes<CSCGeometry, CSCGeometryRecord>(),
+//  geometryToken_(esConsumes()),  //geometryToken_ = esConsumes<GlobalTrackingGeometry, GlobalTrackingGeometryRecord>(),
 
 //  muonSrc(iConfig.getUntrackedParameter<edm::InputTag>("muonSrc")),
   vertexSrc(consumes<reco::VertexCollection>(iConfig.getUntrackedParameter<edm::InputTag>("vertexSrc"))),
@@ -463,6 +487,7 @@ UFCSCRootMaker::UFCSCRootMaker(const edm::ParameterSet& iConfig) :
   simHitTagSrc(consumes<edm::PSimHitContainer>(iConfig.getUntrackedParameter<edm::InputTag>("simHitTagSrc"))),
   fedRawTagSrc(consumes<FEDRawDataCollection>(iConfig.getUntrackedParameter<edm::InputTag>("fedRawTagSrc"))),
 
+
   isFullRECO(iConfig.getUntrackedParameter<bool>("isFullRECO",false)),
   isLocalRECO(iConfig.getUntrackedParameter<bool>("isLocalRECO",false)),
   isGEN(iConfig.getUntrackedParameter<bool>("isGEN",false)),
@@ -479,6 +504,15 @@ UFCSCRootMaker::UFCSCRootMaker(const edm::ParameterSet& iConfig) :
   addTimeMonitoring(iConfig.getUntrackedParameter<bool>("addTimeMonitoring",false)),
   addCalibrations(iConfig.getUntrackedParameter<bool>("addCalibrations",false))
 {
+  cscGeomToken_=esConsumes<CSCGeometry,MuonGeometryRecord>();
+  geometryToken_=esConsumes<GlobalTrackingGeometry,GlobalTrackingGeometryRecord>();
+  hcrateToken_ = esConsumes<CSCCrateMap,CSCCrateMapRcd>();
+  hGainsToken_=esConsumes<CSCDBGains, CSCDBGainsRcd>();
+  hCrosstalkToken_=esConsumes<CSCDBCrosstalk, CSCDBCrosstalkRcd>();
+  hNoiseMatrixToken_=esConsumes<CSCDBNoiseMatrix,CSCDBNoiseMatrixRcd>();
+  hPedestalsToken_=esConsumes<CSCDBPedestals,CSCDBPedestalsRcd>() ;
+
+
   histContainer_["NEVENTS"]=fs->make<TH1F>("nEvents","nEvents in Sample",2,0,2);
   nEventsTotal = 0;
   counter = 0;
@@ -535,12 +569,13 @@ void UFCSCRootMaker::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
    edm::Handle<reco::TrackCollection> saMuons;
    if(isFullRECO) iEvent.getByToken(standAloneMuonsSrc,saMuons);
 
+   cscGeomHandle = iSetup.getHandle(cscGeomToken_);
+   geometryHandle = iSetup.getHandle(geometryToken_);
+      //iSetup.get<MuonGeometryRecord>().get(cscGeomToken_, cscGeomHandle);
+   const CSCGeometry* cscGeom = cscGeomHandle.product();   
 
-   edm::ESHandle<CSCGeometry> cscGeom;
-   iSetup.get<MuonGeometryRecord>().get(cscGeom);   
-
-   edm::ESHandle<GlobalTrackingGeometry> geometry_;
-   iSetup.get<GlobalTrackingGeometryRecord>().get(geometry_);
+   //iSetup.get<GlobalTrackingGeometryRecord>().get(geometryToken_, geometryHandle);
+   const GlobalTrackingGeometry* geometry_ = geometryHandle.product();   
    
    edm::Handle<CSCRecHit2DCollection> recHits;
    if(isLocalRECO || isFullRECO) iEvent.getByToken(cscRecHitTagSrc,recHits);
@@ -2084,8 +2119,8 @@ void UFCSCRootMaker::doLCTDigis( edm::Handle<CSCALCTDigiCollection> alcts, edm::
   // Taking code from EventFilter/CSCRawToDigis/CSCDCCUnpacker.cc
   // *******************************************************************
   
-  edm::ESHandle<CSCCrateMap> hcrate;
-  eventSetup.get<CSCCrateMapRcd>().get(hcrate); 
+  hcrate = eventSetup.getHandle(hcrateToken_);
+//  eventSetup.get<CSCCrateMapRcd>().get(hcrate); 
   const CSCCrateMap* pcrate = hcrate.product();
   
   /// Get a handle to the FED data collection
@@ -2191,7 +2226,7 @@ void UFCSCRootMaker::doLCTDigis( edm::Handle<CSCALCTDigiCollection> alcts, edm::
   	    bool goodTMB=false;
   	    if (nclct&&cscData[iCSC].tmbData()) {
   	      if (cscData[iCSC].tmbHeader()->check()){
-  		if (cscData[iCSC].clctData()->check()) goodTMB=true; 
+  		if (cscData[iCSC].comparatorData()->check()) goodTMB=true; 
   	      }
   	    }  
       	      
@@ -2256,20 +2291,19 @@ void UFCSCRootMaker::doCalibrations(const edm::EventSetup& eventSetup){
 
   // Only do this for the first event
   // get the gains
-  edm::ESHandle<CSCDBGains> hGains;
-  eventSetup.get<CSCDBGainsRcd>().get( hGains );
+
+  hGains =  eventSetup.getHandle(hGainsToken_); 
   const CSCDBGains* pGains = hGains.product();
+  //  eventSetup.get<CSCDBGainsRcd>().get( hGains );
   // get the crosstalks
-  edm::ESHandle<CSCDBCrosstalk> hCrosstalk;
-  eventSetup.get<CSCDBCrosstalkRcd>().get( hCrosstalk );
+ 
+  hCrosstalk = eventSetup.getHandle(hCrosstalkToken_);
   const CSCDBCrosstalk* pCrosstalk = hCrosstalk.product();
   // get the noise matrix
-  edm::ESHandle<CSCDBNoiseMatrix> hNoiseMatrix;
-  eventSetup.get<CSCDBNoiseMatrixRcd>().get( hNoiseMatrix );
+  hNoiseMatrix = eventSetup.getHandle(hNoiseMatrixToken_);
   const CSCDBNoiseMatrix* pNoiseMatrix = hNoiseMatrix.product();
   // get pedestals
-  edm::ESHandle<CSCDBPedestals> hPedestals;
-  eventSetup.get<CSCDBPedestalsRcd>().get( hPedestals );
+  hPedestals = eventSetup.getHandle(hPedestalsToken_ );
   const CSCDBPedestals* pPedestals = hPedestals.product();
 
   for (int i = 0; i < 400; i++)
