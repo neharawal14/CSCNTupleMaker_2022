@@ -19,3 +19,10 @@ scram b -j 8
 ```
 git remote set-url origin new-remote-url
 ```
+
+## For submitting jobs
+1. Write dataset name in file '2016_dataset.txt'
+2. Modify the Globla tag in the python file 'UFCSCSoftware/UFCSCRootMaker/test/UFCSCRootMaker_template.py'
+3. Modify 'SubmicrabJobs.py' to include dataset name
+4. Modify 'crabConfigTemplate.py' to include the lumi mask to produce the dataset
+5. Submit using the script - makeNTuple_2016.sh
