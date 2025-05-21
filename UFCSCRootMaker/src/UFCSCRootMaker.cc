@@ -229,6 +229,7 @@ private:
   edm::EDGetTokenT<CSCSegmentCollection> cscSegTagSrc;
   edm::EDGetTokenT<L1MuGMTReadoutCollection> level1TagSrc;
   edm::EDGetTokenT<edm::TriggerResults> hltTagSrc;
+  edm::EDGetTokenT<trigger::TriggerEvent> hltTriggerObjectTagSrc;
   edm::EDGetTokenT<CSCWireDigiCollection> wireDigiTagSrc;
   edm::EDGetTokenT<CSCStripDigiCollection> stripDigiTagSrc;
   edm::EDGetTokenT<CSCComparatorDigiCollection> compDigiTagSrc;
@@ -297,7 +298,9 @@ private:
   double    muons_et[1000], muons_p[1000], muons_phi[1000], muons_eta[1000], muons_theta[1000];
   double    muons_vx[1000], muons_vy[1000], muons_vz[1000];
   double    muons_globalTrackNormalizedChi2[1000];
-  int       muons_globalTrackNumberOfValidMuonHits[1000], muons_trackNumberOfValidHits[1000], muons_trackNumberOfLostHits[1000];  
+  int       muons_globalTrackNumberOfValidMuonHits[1000], muons_trackNumberOfValidHits[1000], muons_trackNumberOfLostHits[1000], muons_trackerLayers[1000]; 
+  int muons_numberOfMatchedStations[1000];
+  int muons_trackerValidPixelHits[1000]; 
   double    muons_isoNH04[1000], muons_isoCH04[1000], muons_isoPhot04[1000], muons_isoPU04[1000];
   double    muons_isoNH03[1000], muons_isoCH03[1000], muons_isoPhot03[1000], muons_isoPU03[1000];
   double    muons_dxy[1000], muons_dz[1000];
@@ -457,7 +460,14 @@ private:
   int gasGain_location[10000], gasGain_chamber[10000], gasGain_ring[10000], gasGain_station[10000];
   int gasGain_endcap[10000], gasGain_layer[10000]; 
   double gasGain_ADC3x3Sum[10000];
-
+  // if passed HLTIsoMu24 trigger
+  bool passedTrigger;
+  // matched pT, eta, phi, Id
+  int Id_matched;
+  double pT_matched;
+  double eta_matched;
+  double phi_matched;
+  int year;
 };
 
 
@@ -478,6 +488,7 @@ UFCSCRootMaker::UFCSCRootMaker(const edm::ParameterSet& iConfig) :
   cscSegTagSrc(consumes<CSCSegmentCollection>(iConfig.getUntrackedParameter<edm::InputTag>("cscSegTagSrc"))),
   level1TagSrc(consumes<L1MuGMTReadoutCollection>(iConfig.getUntrackedParameter<edm::InputTag>("level1TagSrc"))),
   hltTagSrc(consumes<edm::TriggerResults>(iConfig.getUntrackedParameter<edm::InputTag>("hltTagSrc"))),
+  hltTriggerObjectTagSrc(consumes<trigger::TriggerEvent>(iConfig.getUntrackedParameter<edm::InputTag>("hltTriggerObjectTagSrc"))),
   wireDigiTagSrc(consumes<CSCWireDigiCollection>(iConfig.getUntrackedParameter<edm::InputTag>("wireDigiTagSrc"))),
   stripDigiTagSrc(consumes<CSCStripDigiCollection>(iConfig.getUntrackedParameter<edm::InputTag>("stripDigiTagSrc"))),
   compDigiTagSrc(consumes<CSCComparatorDigiCollection>(iConfig.getUntrackedParameter<edm::InputTag>("compDigiTagSrc"))),
@@ -502,7 +513,8 @@ UFCSCRootMaker::UFCSCRootMaker(const edm::ParameterSet& iConfig) :
   addTrigger(iConfig.getUntrackedParameter<bool>("addTrigger",true)),
   addDigis(iConfig.getUntrackedParameter<bool>("addDigis",false)),
   addTimeMonitoring(iConfig.getUntrackedParameter<bool>("addTimeMonitoring",false)),
-  addCalibrations(iConfig.getUntrackedParameter<bool>("addCalibrations",false))
+  addCalibrations(iConfig.getUntrackedParameter<bool>("addCalibrations",false)),
+  year(iConfig.getUntrackedParameter<int>("year",2018))
 {
   cscGeomToken_=esConsumes<CSCGeometry,MuonGeometryRecord>();
   geometryToken_=esConsumes<GlobalTrackingGeometry,GlobalTrackingGeometryRecord>();
@@ -590,7 +602,11 @@ void UFCSCRootMaker::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
 
    edm::Handle<edm::TriggerResults> hlt;
    iEvent.getByToken(hltTagSrc,hlt);
-   
+   const edm::TriggerNames trigNames = iEvent.triggerNames(*hlt);
+
+  // Obtain trigger Object collection, to identified the object which fired the trigger
+   edm::Handle<trigger::TriggerEvent> hltTriggerObject;
+   iEvent.getByToken(hltTriggerObjectTagSrc,hltTriggerObject);
    // get the digi collections
    edm::Handle<CSCWireDigiCollection> wires;
    edm::Handle<CSCStripDigiCollection> strips;
@@ -640,9 +656,58 @@ void UFCSCRootMaker::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
 	 bx_LUMI[i]=-1;
        }
    }
- */  
-
-
+ */
+      // We are looking for events that passed the HLT_IsoMu24 trigger, and rejecting the events which do not
+      // This is done so we can have events from just single trigger 
+      passedTrigger=false; 
+      //std::cout<<" in the evnt  : Number of trigger "<<std::endl; 
+      unsigned int _tSize = hlt->size();
+      //std::cout<<" size "<<_tSize<<std::endl;
+      // create a string with all passing trigger names
+      //for (unsigned int i=0; i<_tSize; ++i) {
+	//std::string triggerName = trigNames.triggerName(i);
+	//std::cout<<" triggerName "<<triggerName.c_str()<<std::endl;
+      //}
+      for (unsigned int i=0; i<_tSize; ++i) {
+	std::string triggerName = trigNames.triggerName(i);
+	if(strstr(triggerName.c_str(),"HLT_IsoMu24_v")) 
+	 { passedTrigger=true;
+	   //std::cout<<" passed trigger "<<triggerName.c_str()<<std::endl;
+	 }
+      }
+      if(!passedTrigger) return;
+      // ONly events which passed the trigger will be processed
+      
+      // Assess the  Object information(pt, eta, phi, id)  for the object which fired the trigger 
+      // Save this information in pT_matched, eta_matched, phi_matched to compare with the reco muon - called trigger matching
+     
+	//Matched trigger has different name for 2016, and 2017-2018 
+      std::string filterName; 
+      if(year==2016) filterName = "hltL3crIsoL1sMu22L1f0L2f10QL3f24QL3trkIsoFiltered0p09";
+      else  filterName = "hltL3crIsoL1sSingleMu22L1f0L2f10QL3f24QL3trkIsoFiltered0p07";
+      // if one directly looks at matched object, one would get all the objects which are matched 
+      // For each specific object which fire the trigger there is a specific filterNames
+      // In order to access the unique object which fire the trigger, we need to look for matching of a specific filter Name
+      trigger::size_type filterIndex = hltTriggerObject->filterIndex(edm::InputTag(filterName, "", "HLT"));
+      if (filterIndex < hltTriggerObject->sizeFilters()) {
+	    const trigger::Keys& keys = hltTriggerObject->filterKeys(filterIndex);
+     	    const trigger::TriggerObjectCollection& objects = hltTriggerObject->getObjects();
+            for (auto key : keys) {
+                const trigger::TriggerObject& obj = objects[key];
+                   // std::cout << "Matched object to filter: pt = " << obj.pt() << std::endl;
+        	    double pt = obj.pt();
+		    double eta = obj.eta();
+		    double phi = obj.phi();
+		    int id = obj.id();
+		     
+			pT_matched = pt; 
+			eta_matched = eta;
+			phi_matched = phi;
+			Id_matched = id;
+		    //std::cout << "pt: eta : phi : id : mass : " << pt << " : "<<eta<<" : "<<phi<<" : "<<id<<" : "<<std::endl;
+		   //if(abs(id==13)) std::cout<<" passed muon pt: eta : phi :  id : mass : " << pt << " : "<<eta<<" : "<<phi<<" : "<<id<<" : "<<mass<<std::endl;
+       	   }
+        }
    if(addMuons && isFullRECO) doMuons(muons,saMuons,cscSegments,recHits,PV,iEvent,iSetup,geometry_,cscGeom);
 //   if(addTracks && isFullRECO) doTracks(genTracks);
    if(addRecHits &&  (isFullRECO || isLocalRECO)) doRecHits(recHits,simHits,saMuons,muons,cscGeom,iEvent);
@@ -836,6 +901,7 @@ void UFCSCRootMaker::doMuons(edm::Handle<reco::MuonCollection> muons, edm::Handl
       std::vector<double> cscSegmentRecord_localY, cscSegmentRecord_localX, cscSegmentRecord_theta;
 
            
+	  muons_numberOfMatchedStations[counter] = mu->numberOfMatchedStations();
       if (mu->isGlobalMuon())
 	{
 	  muons_globalTrackNormalizedChi2[counter] = (double)mu->globalTrack()->chi2()/mu->globalTrack()->ndof();
@@ -849,6 +915,8 @@ void UFCSCRootMaker::doMuons(edm::Handle<reco::MuonCollection> muons, edm::Handl
 	{
 	  muons_trackNumberOfValidHits[counter] = mu->track()->numberOfValidHits();
 	  muons_trackNumberOfLostHits[counter] = mu->track()->numberOfLostHits();  
+	  muons_trackerLayers[counter] = mu->track()->hitPattern().trackerLayersWithMeasurement();
+	  muons_trackerValidPixelHits[counter] = mu->track()->hitPattern().numberOfValidPixelHits();
 	  muons_dxy[counter] = mu->track()->dxy(PV->position());
 	  muons_dz[counter] = mu->track()->dz(PV->position());
 
@@ -881,8 +949,11 @@ void UFCSCRootMaker::doMuons(edm::Handle<reco::MuonCollection> muons, edm::Handl
 	}
       else
 	{
+	  muons_numberOfMatchedStations[counter] = -999;
 	  muons_trackNumberOfValidHits[counter] = -999;
 	  muons_trackNumberOfLostHits[counter] = -999;
+	  muons_trackerLayers[counter] = -999;
+	  muons_trackerValidPixelHits[counter] = -999;
 	  muons_dxy[counter] = -999;
 	  muons_dz[counter] = -999;
 	}
@@ -1165,10 +1236,15 @@ UFCSCRootMaker::doRecHits(edm::Handle<CSCRecHit2DCollection> recHits, edm::Handl
      //double rHSumQ = 0;
      //double sumsides=0.;
      //int adcsize=dRHIter->nStrips()*dRHIter->nTimeBins();
+    
+      // The printouts are just to print how many strips get fired together and how many time bins are there 
+     //std::cout <<" number of strips "<<dRHIter->nStrips()<<std::endl;
+     //std::cout <<" number of time bins "<<dRHIter->nTimeBins()<<std::endl;
      for ( unsigned int i=0; i< dRHIter->nStrips(); i++) {
        for ( unsigned int j=0; j< dRHIter->nTimeBins()-1; j++) {
+        
 	 recHits2D_SumQ[counter]+=dRHIter->adcs(i,j); 
-	 //cout << i << "  " << j << "  " <<  dRHIter->adcs(i,j) << endl;
+	 // cout << i << "  " << j << "  " <<  dRHIter->adcs(i,j) << endl;
 	 if (i!=1) recHits2D_SumQSides[counter]+=dRHIter->adcs(i,j);
        }
      }
@@ -3080,8 +3156,11 @@ UFCSCRootMaker::bookTree(TTree *tree)
   tree->Branch("muons_vz",   muons_vz,   "muons_vz[muons_nMuons]/D");
   tree->Branch("muons_globalTrackNormalizedChi2",   muons_globalTrackNormalizedChi2   ,   "muons_globalTrackNormalizedChi2[muons_nMuons]/D");
   tree->Branch("muons_globalTrackNumberOfValidMuonHits",   muons_globalTrackNumberOfValidMuonHits, "muons_globalTrackNumberOfValidMuonHits[muons_nMuons]/I");
+  tree->Branch("muons_numberOfMatchedStations",  muons_numberOfMatchedStations,  "muons_numberOfMatchedStations[muons_nMuons]/I");
   tree->Branch("muons_trackNumberOfValidHits",   muons_trackNumberOfValidHits,    "muons_trackNumberOfValidHits[muons_nMuons]/I");
   tree->Branch("muons_trackNumberOfLostHits",   muons_trackNumberOfLostHits,    "muons_trackNumberOfLostHits[muons_nMuons]/I");
+  tree->Branch("muons_trackerLayers",  muons_trackerLayers,  "muons_trackerLayers[muons_nMuons]/I");
+  tree->Branch("muons_trackerValidPixelHits",  muons_trackerValidPixelHits,  "muons_trackerValidPixelHits[muons_nMuons]/I");
   tree->Branch("muons_isoNH03",   muons_isoNH03,   "muons_isoNH03[muons_nMuons]/D");
   tree->Branch("muons_isoCH03",   muons_isoCH03,   "muons_isoCH03[muons_nMuons]/D");
   tree->Branch("muons_isoPhot03",   muons_isoPhot03,   "muons_isoPhot03[muons_nMuons]/D");
@@ -3310,6 +3389,12 @@ UFCSCRootMaker::bookTree(TTree *tree)
   tree->Branch("gasGain_layer", gasGain_layer,"gasGain_layer[gasGain_nGasGain]/I");
   tree->Branch("gasGain_ADC3x3Sum", gasGain_ADC3x3Sum,"gasGain_ADC3x3Sum[gasGain_nGasGain]/D");
 
+  //HLT trigger
+  tree->Branch("passedTrigger",&passedTrigger,"passedTrigger/O");
+  tree->Branch("pT_matched",&pT_matched,"pT_matched/D");
+  tree->Branch("eta_matched",&eta_matched,"eta_matched/D");
+  tree->Branch("phi_matched",&phi_matched,"phi_matched/D");
+  tree->Branch("Id_matched",&Id_matched,"Id_matched/I");
 }
 
 
