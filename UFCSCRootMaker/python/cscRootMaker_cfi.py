@@ -8,6 +8,7 @@ cscRootMaker = cms.EDAnalyzer('UFCSCRootMaker',
   cscSegTagSrc = cms.untracked.InputTag('cscSegments','','RECO'),
   level1TagSrc = cms.untracked.InputTag('gtDigis'),
   hltTagSrc = cms.untracked.InputTag('TriggerResults', '', 'HLT'),
+  hltTriggerObjectTagSrc = cms.untracked.InputTag('hltTriggerSummaryAOD', '', 'HLT'),
   stripDigiTagSrc = cms.untracked.InputTag('muonCSCDigis', 'MuonCSCStripDigi'),
   wireDigiTagSrc = cms.untracked.InputTag('muonCSCDigis', 'MuonCSCWireDigi'),
   compDigiTagSrc = cms.untracked.InputTag('muonCSCDigis', 'MuonCSCComparatorDigi'),
@@ -30,5 +31,6 @@ cscRootMaker = cms.EDAnalyzer('UFCSCRootMaker',
   addTrigger = cms.untracked.bool(False),
   addDigis = cms.untracked.bool(False),
   addTimeMonitoring = cms.untracked.bool(False),
-  addCalibrations = cms.untracked.bool(False)
+  addCalibrations = cms.untracked.bool(False),
+  year = cms.untracked.int32(2018)
 )

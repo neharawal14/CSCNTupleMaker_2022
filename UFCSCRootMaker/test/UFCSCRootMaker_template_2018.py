@@ -28,7 +28,7 @@ addDigiInfo = bool(True)
 addTimeMonitoringInfo = bool(True)
 addCalibrationInfo = bool(True)
 
-yearInfo = 2017
+yearInfo = 2018
 
 maxEvents = -1
 

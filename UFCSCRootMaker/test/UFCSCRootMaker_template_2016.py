@@ -28,7 +28,7 @@ addDigiInfo = bool(True)
 addTimeMonitoringInfo = bool(True)
 addCalibrationInfo = bool(True)
 
-yearInfo = 2017
+yearInfo = 2016
 
 maxEvents = -1
 
@@ -36,9 +36,9 @@ maxEvents = -1
 #DataGlobalTag='76X_dataRun2_v19'
 #DataGlobalTag='76X_dataRun2_v15'
 # 2016 
-#DataGlobalTag='106X_dataRun2_v27'
+DataGlobalTag='106X_dataRun2_v27'
 # 2017
-DataGlobalTag='106X_dataRun2_v20'
+#DataGlobalTag='106X_dataRun2_v20'
 # 2018
 #DataGlobalTag='106X_dataRun2_v24'
 
