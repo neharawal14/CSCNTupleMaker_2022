@@ -463,10 +463,12 @@ private:
   // if passed HLTIsoMu24 trigger
   bool passedTrigger;
   // matched pT, eta, phi, Id
-  int Id_matched;
-  double pT_matched;
-  double eta_matched;
-  double phi_matched;
+  int Id_matched[20];
+  double pT_matched[20];
+  double eta_matched[20];
+  double phi_matched[20];
+  int nb_trigger_matched;
+   int match_count;
   int year;
 };
 
@@ -689,25 +691,30 @@ void UFCSCRootMaker::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
       // For each specific object which fire the trigger there is a specific filterNames
       // In order to access the unique object which fire the trigger, we need to look for matching of a specific filter Name
       trigger::size_type filterIndex = hltTriggerObject->filterIndex(edm::InputTag(filterName, "", "HLT"));
+      
+      match_count = 0;            
       if (filterIndex < hltTriggerObject->sizeFilters()) {
 	    const trigger::Keys& keys = hltTriggerObject->filterKeys(filterIndex);
      	    const trigger::TriggerObjectCollection& objects = hltTriggerObject->getObjects();
             for (auto key : keys) {
+	        //std::cout<<" key here "<<std::endl;
                 const trigger::TriggerObject& obj = objects[key];
-                   // std::cout << "Matched object to filter: pt = " << obj.pt() << std::endl;
+                    std::cout << "Matched object to filter: pt = " << obj.pt() << " : "<<match_count<<std::endl;
         	    double pt = obj.pt();
 		    double eta = obj.eta();
 		    double phi = obj.phi();
 		    int id = obj.id();
-		     
-			pT_matched = pt; 
-			eta_matched = eta;
-			phi_matched = phi;
-			Id_matched = id;
+		      
+			pT_matched[match_count] = pt; 
+			eta_matched[match_count] = eta;
+			phi_matched[match_count] = phi;
+			Id_matched[match_count] = id;
+	                match_count++;
 		    //std::cout << "pt: eta : phi : id : mass : " << pt << " : "<<eta<<" : "<<phi<<" : "<<id<<" : "<<std::endl;
 		   //if(abs(id==13)) std::cout<<" passed muon pt: eta : phi :  id : mass : " << pt << " : "<<eta<<" : "<<phi<<" : "<<id<<" : "<<mass<<std::endl;
        	   }
         }
+   nb_trigger_matched = match_count;
    if(addMuons && isFullRECO) doMuons(muons,saMuons,cscSegments,recHits,PV,iEvent,iSetup,geometry_,cscGeom);
 //   if(addTracks && isFullRECO) doTracks(genTracks);
    if(addRecHits &&  (isFullRECO || isLocalRECO)) doRecHits(recHits,simHits,saMuons,muons,cscGeom,iEvent);
@@ -3391,10 +3398,11 @@ UFCSCRootMaker::bookTree(TTree *tree)
 
   //HLT trigger
   tree->Branch("passedTrigger",&passedTrigger,"passedTrigger/O");
-  tree->Branch("pT_matched",&pT_matched,"pT_matched/D");
-  tree->Branch("eta_matched",&eta_matched,"eta_matched/D");
-  tree->Branch("phi_matched",&phi_matched,"phi_matched/D");
-  tree->Branch("Id_matched",&Id_matched,"Id_matched/I");
+  tree->Branch("nb_trigger_matched",  &nb_trigger_matched,   "nb_trigger_matched/I");
+  tree->Branch("pT_matched",pT_matched,"pT_matched[nb_trigger_matched]/D");
+  tree->Branch("eta_matched",eta_matched,"eta_matched[nb_trigger_matched]/D");
+  tree->Branch("phi_matched",phi_matched,"phi_matched[nb_trigger_matched]/D");
+  tree->Branch("Id_matched",Id_matched,"Id_matched[nb_trigger_matched]/I");
 }
 
 
