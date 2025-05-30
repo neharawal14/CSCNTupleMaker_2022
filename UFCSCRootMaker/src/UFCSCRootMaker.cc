@@ -135,6 +135,7 @@
 
 #include "DataFormats/Luminosity/interface/LumiDetails.h"
 #include "DataFormats/Luminosity/interface/LumiSummary.h"
+#include "FWCore/Framework/interface/one/EDAnalyzer.h"
 //#include "RecoLuminosity/LumiProducer/interface/LumiCorrectionParam.h"
 
 #include "TFile.h"
@@ -147,7 +148,8 @@ using namespace std;
 // class declaration
 //
 
-class UFCSCRootMaker : public edm::EDAnalyzer {
+//class UFCSCRootMaker : public edm::EDAnalyzer {
+class UFCSCRootMaker : public edm::one::EDAnalyzer<> {
 public:
   explicit UFCSCRootMaker(const edm::ParameterSet&);
   ~UFCSCRootMaker();
@@ -242,6 +244,7 @@ private:
   SegmentsTrackAssociator* theSegmentsAssociator;
   edm::ParameterSet parameters;
 
+  bool debug = false;
   bool isFullRECO, isLocalRECO, isGEN, isSIM, isRAW, isDIGI, isDATA;
   bool addMuons, addTracks, addRecHits, addSegments, addTrigger, addDigis, addTimeMonitoring;
   bool addCalibrations;
@@ -456,17 +459,20 @@ private:
 
   // Gas Gain
   int gasGain_nGasGain;
-  int gasGain_chamberType[10000], gasGain_HVSegNumber[10000], gasGain_NmbHVSegments[10000];
-  int gasGain_location[10000], gasGain_chamber[10000], gasGain_ring[10000], gasGain_station[10000];
-  int gasGain_endcap[10000], gasGain_layer[10000]; 
+  int gasGain_chamberType[10000];
+  //int gasGain_HVSegNumber[10000], gasGain_NmbHVSegments[10000], gasGain_location[10000];
+  int gasGain_chamber[10000], gasGain_ring[10000], gasGain_station[10000];
+  int gasGain_endcap[10000]; //, gasGain_layer[10000]; 
   double gasGain_ADC3x3Sum[10000];
   // if passed HLTIsoMu24 trigger
   bool passedTrigger;
   // matched pT, eta, phi, Id
-  int Id_matched;
-  double pT_matched;
-  double eta_matched;
-  double phi_matched;
+  int Id_matched[20];
+  double pT_matched[20];
+  double eta_matched[20];
+  double phi_matched[20];
+  int nb_trigger_matched;
+   int match_count;
   int year;
 };
 
@@ -662,19 +668,16 @@ void UFCSCRootMaker::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
       passedTrigger=false; 
       //std::cout<<" in the evnt  : Number of trigger "<<std::endl; 
       unsigned int _tSize = hlt->size();
-      //std::cout<<" size "<<_tSize<<std::endl;
+      //std::cout<<" size of trigger "<<_tSize<<std::endl;
       // create a string with all passing trigger names
-      //for (unsigned int i=0; i<_tSize; ++i) {
-	//std::string triggerName = trigNames.triggerName(i);
-	//std::cout<<" triggerName "<<triggerName.c_str()<<std::endl;
-      //}
       for (unsigned int i=0; i<_tSize; ++i) {
-	std::string triggerName = trigNames.triggerName(i);
-	if(strstr(triggerName.c_str(),"HLT_IsoMu24_v")) 
-	 { passedTrigger=true;
-	   //std::cout<<" passed trigger "<<triggerName.c_str()<<std::endl;
-	 }
-      }
+	       std::string triggerName = trigNames.triggerName(i);
+         if(debug) std::cout<<" trigger Name :"<<i<<" : "<<triggerName.c_str()<<std::endl;
+         if(! strstr(triggerName.c_str(),"HLT_IsoMu24_v")) continue; 
+         if(debug) std::cout<<" that passed trigger :"<<i<<" : "<<triggerName.c_str()<<std::endl;
+         if (hlt->accept(i)) passedTrigger=true;
+	       if(debug) std::cout<<" accepted  trigger :"<<i<<" : "<<triggerName.c_str()<<std::endl;
+	     }
       if(!passedTrigger) return;
       // ONly events which passed the trigger will be processed
       
@@ -689,38 +692,61 @@ void UFCSCRootMaker::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
       // For each specific object which fire the trigger there is a specific filterNames
       // In order to access the unique object which fire the trigger, we need to look for matching of a specific filter Name
       trigger::size_type filterIndex = hltTriggerObject->filterIndex(edm::InputTag(filterName, "", "HLT"));
+      
+      match_count = 0;            
+
+      //std::cout<<" filter index filter  :"<<filterIndex<<" total size of Index :"<<hltTriggerObject->sizeFilters()<<std::endl;
       if (filterIndex < hltTriggerObject->sizeFilters()) {
+
 	    const trigger::Keys& keys = hltTriggerObject->filterKeys(filterIndex);
      	    const trigger::TriggerObjectCollection& objects = hltTriggerObject->getObjects();
             for (auto key : keys) {
+              if(debug) std::cout<<" key :"<<key<<std::endl;
                 const trigger::TriggerObject& obj = objects[key];
-                   // std::cout << "Matched object to filter: pt = " << obj.pt() << std::endl;
-        	    double pt = obj.pt();
-		    double eta = obj.eta();
-		    double phi = obj.phi();
-		    int id = obj.id();
-		     
-			pT_matched = pt; 
-			eta_matched = eta;
-			phi_matched = phi;
-			Id_matched = id;
+                if(debug) std::cout << "Matched object to filter: pt = " << obj.pt() << " : "<<" eta "<<obj.eta()<<
+                " phi "<<obj.phi()<<" : "<<" id "<<obj.id()<<" : "<<match_count<<std::endl;
+        	      if (match_count >= 200) {
+                std::cerr << "Warning: Too many matched trigger objects, truncating to " << 200 << std::endl;
+                break;
+                } 
+              double pt = obj.pt();
+		          double eta = obj.eta();
+		          double phi = obj.phi();
+		          int id = obj.id();
+			        pT_matched[match_count] = pt; 
+			        eta_matched[match_count] = eta;
+			        phi_matched[match_count] = phi;
+			        Id_matched[match_count] = id;
+	            match_count++;
 		    //std::cout << "pt: eta : phi : id : mass : " << pt << " : "<<eta<<" : "<<phi<<" : "<<id<<" : "<<std::endl;
 		   //if(abs(id==13)) std::cout<<" passed muon pt: eta : phi :  id : mass : " << pt << " : "<<eta<<" : "<<phi<<" : "<<id<<" : "<<mass<<std::endl;
        	   }
         }
+        if(debug) std::cout<<" done with matching trigger objects"<<std::endl;
+   nb_trigger_matched = match_count;
    if(addMuons && isFullRECO) doMuons(muons,saMuons,cscSegments,recHits,PV,iEvent,iSetup,geometry_,cscGeom);
+
+   if(debug) std::cout<<" done with d0 Muons"<<std::endl;
 //   if(addTracks && isFullRECO) doTracks(genTracks);
    if(addRecHits &&  (isFullRECO || isLocalRECO)) doRecHits(recHits,simHits,saMuons,muons,cscGeom,iEvent);
+   if(debug) std::cout<<" done with d0 RecHits"<<std::endl;
    if(addSegments && (isFullRECO || isLocalRECO)) doSegments(cscSegments,cscGeom);
+   if(debug) std::cout<<" done with d0 segments"<<std::endl;
 //   if(addTrigger && (isFullRECO || isLocalRECO || isRAW)) doTrigger(pCollection,hlt);
    if(addDigis && isDIGI)
      {
+       if(debug)  std::cout<<" Going to do Strip Digis"<<std::endl;
        doStripDigis(strips, cscGeom);
+     if(debug)  std::cout<<" Going to do Wire Digis"<<std::endl;
        doWireDigis(wires, cscGeom);
+     if(debug)  std::cout<<" Going to do Comp Timing"<<std::endl;
        doCompTiming(*compars);
+     if(debug)  std::cout<<" Going to do LCT Digis"<<std::endl;
        if(addTimeMonitoring) doLCTDigis(alcts, clcts, correlatedlcts, pCollection, cscGeom,iSetup, iEvent);
+     if(debug)  std::cout<<" Going to do Gas Gain"<<std::endl;
        if(isLocalRECO) doGasGain(*wires, *strips, *recHits);
      }
+    if(debug)std::cout<<" done with add digis"<<std::endl;
    if(addRecHits && isDIGI && (isLocalRECO || isFullRECO) ) doNonAssociatedRecHits(cscSegments,cscGeom,strips);
    if(addCalibrations && nEventsTotal == 1) doCalibrations(iSetup);
 
@@ -2419,7 +2445,9 @@ void UFCSCRootMaker::doCalibrations(const edm::EventSetup& eventSetup){
 //---------------------------------------------------------------------------
 void UFCSCRootMaker::doGasGain(const CSCWireDigiCollection& wirecltn,  const CSCStripDigiCollection&   strpcltn,
 			       const CSCRecHit2DCollection& rechitcltn) {
-  int channel=0,mult,wire,layer,idlayer;//,idchamber;
+
+    if(debug)  std::cout<<" Started with do Gas Gain"<<std::endl;
+  int channel=0,mult,wire,idlayer;//,idchamber, layer;
   int wire_strip_rechit_present;
   std::string name,title,endcapstr;
   ostringstream ss;
@@ -2428,6 +2456,7 @@ void UFCSCRootMaker::doGasGain(const CSCWireDigiCollection& wirecltn,  const CSC
   
   m_single_wire_layer.clear();
   
+    if(debug)  std::cout<<" before nEvents Total"<<std::endl;
   if(nEventsTotal == 1) {
     
     // HV segments, their # and location in terms of wire groups
@@ -2531,10 +2560,12 @@ void UFCSCRootMaker::doGasGain(const CSCWireDigiCollection& wirecltn,  const CSC
     for(int wire=29;wire<=40;wire++) intvecIt->second[wire]=3;  // Segment 3
     for(int wire=41;wire<=52;wire++) intvecIt->second[wire]=4;  // Segment 4
     for(int wire=53;wire<=64;wire++) intvecIt->second[wire]=5;  // Segment 5
-    
+
+    if(debug)  std::cout<<" done with do Gas Gain"<<std::endl;
   } // end of if(nEventsAnalyzed==1)
   
   
+    if(debug)  std::cout<<" Conting wires"<<std::endl;
   // are wires, strips and rechits present?
   wire_strip_rechit_present=0;
   if(wirecltn.begin() != wirecltn.end()) wire_strip_rechit_present = wire_strip_rechit_present+1;
@@ -2551,7 +2582,7 @@ void UFCSCRootMaker::doGasGain(const CSCWireDigiCollection& wirecltn,  const CSC
 	const CSCDetId id = (*wiredetUnitIt).first;
 	idlayer=indexer.dbIndex(id, channel);
 	//idchamber=idlayer/10;
-	layer=id.layer();
+//	layer=id.layer();
 	// looping in the layer of given CSC
 	mult=0; wire=0; 
 	const CSCWireDigiCollection::Range& range = (*wiredetUnitIt).second;
@@ -2576,7 +2607,7 @@ void UFCSCRootMaker::doGasGain(const CSCWireDigiCollection& wirecltn,  const CSC
 	CSCDetId id = (CSCDetId)(*recIt).cscDetId();
 	idlayer=indexer.dbIndex(id, channel);
 	//idchamber=idlayer/10;
-	layer=id.layer();
+	//layer=id.layer();
 	// select layer with single wire rechit
 	if(m_single_wire_layer.find(idlayer) != m_single_wire_layer.end()) 
 	  {
@@ -2601,45 +2632,57 @@ void UFCSCRootMaker::doGasGain(const CSCWireDigiCollection& wirecltn,  const CSC
 	      
 	      
 	      if(adc_3_3_sum > 0.0 &&  adc_3_3_sum < 2000.0) {
-		
+	    if(debug)  std::cout<<" adc_3_3_sum "<<adc_3_3_sum<<std::endl;
 		// temporary fix for ME1/1a to avoid triple entries
 		int flag=0;
 		if(id.station()==1 && id.ring()==4 &&  recIt->channels(1)>16)  flag=1;
 		// end of temporary fix
+
+    if(debug)  std::cout<<" checking flag"<<flag<<std::endl;
 		if(flag==0) {
-		  
+	      if(debug)  std::cout<<" flag is 0"<<std::endl;
 		  wire= m_single_wire_layer[idlayer];
+      if(debug)  std::cout<<" wire "<<wire<<std::endl;
 		  int chambertype=id.iChamberType(id.station(),id.ring());
-		  int hvsgmtnmb=m_wire_hvsegm[chambertype][wire];
-		  int nmbofhvsegm=nmbhvsegm[chambertype-1];
-		  int location= (layer-1)*nmbofhvsegm+hvsgmtnmb;
-		  		  
+      if(debug)  std::cout<<" chambertype "<<chambertype<<std::endl;
+		 // int hvsgmtnmb=m_wire_hvsegm[chambertype][wire];
+    //  
+      //  if(debug)  std::cout<<" hvsgmtnmb "<<hvsgmtnmb<<std::endl;
+		  //int nmbofhvsegm=nmbhvsegm[chambertype-1];
+      //if(debug)  std::cout<<" nmbofhvsegm "<<nmbofhvsegm<<std::endl;  
+		  //int location= (layer-1)*nmbofhvsegm+hvsgmtnmb;
+      //if(debug)  std::cout<<" location "<<location<<std::endl;
+		  if(debug)  std::cout<<" counter "<<counter<<std::endl;		  
+
 		  gasGain_chamberType[counter] = chambertype;
-		  gasGain_HVSegNumber[counter] = hvsgmtnmb;
-		  gasGain_NmbHVSegments[counter] = nmbofhvsegm;
-		  gasGain_location[counter] = location;
+		  //gasGain_HVSegNumber[counter] = hvsgmtnmb;
+		  //gasGain_NmbHVSegments[counter] = nmbofhvsegm;
+		  //gasGain_location[counter] = location;
 		  gasGain_ADC3x3Sum[counter] = adc_3_3_sum;
 		  gasGain_chamber[counter] = id.chamber();
 		  gasGain_ring[counter] = id.ring();
 		  gasGain_station[counter] = id.station();
 		  gasGain_endcap[counter] = id.endcap();
-		  gasGain_layer[counter] = id.layer();
+		  //gasGain_layer[counter] = id.layer();
 		  counter++;
 
-		  /*
-		    std::cout<<idchamber<<"   "<<id.station()<<" "<<id.ring()<<" "
-		    <<id.chamber()<<"    "<<layer<<" "<< wire<<" "<<m_strip[1]<<" "<<
-		    chambertype<<" "<< hvsgmtnmb<<" "<< nmbofhvsegm<<" "<< 
-		    location<<"   "<<adc_3_3_sum<<std::endl;
-		  */
+		  if(debug)  std::cout<<" counter "<<counter<<std::endl;		  
+		  
+		    ///std::cout<<idchamber<<"   "<<id.station()<<" "<<id.ring()<<" "
+		    ///<<id.chamber()<<"    "<<layer<<" "<< wire<<" "<<m_strip[1]<<" "<<
+		    ///chambertype<<" "<< hvsgmtnmb<<" "<< nmbofhvsegm<<" "<< 
+		    ///location<<"   "<<adc_3_3_sum<<std::endl;
+		  
 		} // end of if flag==0
 	      } // end if(adcsum>0.0 && adcsum<2000.0)
 	    } // end of if if(m_strip.size()==3
 	  } // end of if single wire
       } // end of looping thru rechit collection
   }   // end of if wire and strip and rechit present 
+    if(debug)  std::cout<<" going to be done with do Gas Gain"<<std::endl;
   gasGain_nGasGain = counter;
 
+    if(debug)  std::cout<<" complete done with do Gas Gain"<<std::endl;
 
 }
 
@@ -3377,24 +3420,26 @@ UFCSCRootMaker::bookTree(TTree *tree)
   tree->Branch("nonAssocRecHits_distToGoodRH", nonAssocRecHits_distToGoodRH,"nonAssocRecHits_distToGoodRH[nonAssocRecHits_nNonAssocRH]/D");
 
   // Gas Gain
+  // Commented out this as this was giving segmentation violation
   tree->Branch("gasGain_nGasGain",&gasGain_nGasGain,"gasGain_nGasGain/I");
   tree->Branch("gasGain_chamberType", gasGain_chamberType,"gasGain_chamberType[gasGain_nGasGain]/I");
-  tree->Branch("gasGain_HVSegNumber", gasGain_HVSegNumber,"gasGain_HVSegNumber[gasGain_nGasGain]/I");
-  tree->Branch("gasGain_NmbHVSegments", gasGain_NmbHVSegments,"gasGain_NmbHVSegments[gasGain_nGasGain]/I");
-  tree->Branch("gasGain_location", gasGain_location,"gasGain_location[gasGain_nGasGain]/I");
+//  tree->Branch("gasGain_HVSegNumber", gasGain_HVSegNumber,"gasGain_HVSegNumber[gasGain_nGasGain]/I");
+//  tree->Branch("gasGain_NmbHVSegments", gasGain_NmbHVSegments,"gasGain_NmbHVSegments[gasGain_nGasGain]/I");
+//  tree->Branch("gasGain_location", gasGain_location,"gasGain_location[gasGain_nGasGain]/I");
   tree->Branch("gasGain_chamber", gasGain_chamber,"gasGain_chamber[gasGain_nGasGain]/I");
   tree->Branch("gasGain_ring", gasGain_ring,"gasGain_ring[gasGain_nGasGain]/I");
   tree->Branch("gasGain_station", gasGain_station,"gasGain_station[gasGain_nGasGain]/I");
   tree->Branch("gasGain_endcap", gasGain_endcap,"gasGain_endcap[gasGain_nGasGain]/I");
-  tree->Branch("gasGain_layer", gasGain_layer,"gasGain_layer[gasGain_nGasGain]/I");
+//  tree->Branch("gasGain_layer", gasGain_layer,"gasGain_layer[gasGain_nGasGain]/I");
   tree->Branch("gasGain_ADC3x3Sum", gasGain_ADC3x3Sum,"gasGain_ADC3x3Sum[gasGain_nGasGain]/D");
 
   //HLT trigger
   tree->Branch("passedTrigger",&passedTrigger,"passedTrigger/O");
-  tree->Branch("pT_matched",&pT_matched,"pT_matched/D");
-  tree->Branch("eta_matched",&eta_matched,"eta_matched/D");
-  tree->Branch("phi_matched",&phi_matched,"phi_matched/D");
-  tree->Branch("Id_matched",&Id_matched,"Id_matched/I");
+  tree->Branch("nb_trigger_matched",  &nb_trigger_matched,   "nb_trigger_matched/I");
+  tree->Branch("pT_matched",pT_matched,"pT_matched[nb_trigger_matched]/D");
+  tree->Branch("eta_matched",eta_matched,"eta_matched[nb_trigger_matched]/D");
+  tree->Branch("phi_matched",phi_matched,"phi_matched[nb_trigger_matched]/D");
+  tree->Branch("Id_matched",Id_matched,"Id_matched[nb_trigger_matched]/I");
 }
 
 
