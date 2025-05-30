@@ -2,7 +2,9 @@
 #-----------------------------------------------
 # Latest update: 2014.09.14
 #-----------------------------------------------
-import sys, os, pwd, commands
+import sys, os, pwd, string
+#import subprocess
+import commands
 import optparse, shlex, re
 import time
 from time import gmtime, strftime
@@ -28,10 +30,20 @@ def parseOptions():
 # define function for processing the external os commands
 def processCmd(cmd, quite = 0):
     #    print cmd
+    #completed_process = subprocess.run(cmd,  capture_output=True, shell=True)
+    #process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, shell=True)
+    #output, status = process.communicate()
+    #print(output)
+    # output = completed_process.stdout
+    #output = output.decode('utf-8')
+    # status = completed_process.stderr
+    #status = status.decode('utf-8')
+    #print(" output ", output)
+    #print(" status ", status)
     status, output = commands.getstatusoutput(cmd)
     if (status !=0 and not quite):
-        print 'Error in processing command:\n   ['+cmd+']'
-        print 'Output:\n   ['+output+'] \n'
+        print ('Error in processing command:\n   ['+cmd+']')
+        print ('Output:\n   ['+output+'] \n')
     return output
 
 def submitAnalyzer():
@@ -55,7 +67,7 @@ def submitAnalyzer():
         processCmd(cmd)
 
     # get the datasets
-    print '[Gathering Dataset Information]'
+    print('[Gathering Dataset Information]')
     datasets = []
     cross_section = {}
     nfiles = {}
@@ -76,7 +88,7 @@ def submitAnalyzer():
             datasets.append(dataset)
             cross_section[dataset] = float(line.split()[1])
 
-            cmd = './das_client.py --query="file dataset='+dataset+'" --limit=0 | grep ".root"'
+            cmd = 'dasgoclient --query="file dataset='+dataset+'" --limit=0 | grep ".root"'
 #            cmd = './das_client.py --query="file dataset='+dataset+' instance=prod/phys03" --limit=0 | grep ".root"'
 
             output = processCmd(cmd)
@@ -86,7 +98,8 @@ def submitAnalyzer():
             datasetfiles[dataset] =  output.split()
             nfiles[dataset] = len(datasetfiles[dataset])
  
-            cmd = './das_client.py --query="dataset dataset='+dataset+' | grep dataset.nevents" --limit=0'
+            cmd = 'dasgoclient --query="dataset dataset='+dataset+' | grep dataset.nevents" --limit=0'
+#            cmd = './das_client.py --query="dataset dataset='+dataset+' | grep dataset.nevents" --limit=0'
             output = processCmd(cmd)
             while ('error' in output):
                 time.sleep(1.0);
@@ -94,11 +107,11 @@ def submitAnalyzer():
             nevents[dataset] = output
 
 #            print cross_section, nfiles, nevents 
-            print dataset,'xs:',cross_section[dataset],'nfiles:',nfiles[dataset],'nevents:',nevents[dataset]
+            print(dataset,'xs:',cross_section[dataset],'nfiles:',nfiles[dataset],'nevents:',nevents[dataset])
 
 
     # submit the jobs
-    print '[Submitting jobs]'
+    print('[Submitting jobs]')
     jobCount=0
 
 
@@ -158,15 +171,15 @@ def submitAnalyzer():
         output = processCmd(cmd)
 
         cmd = 'crab submit -c '+outDir+'/cfg/'+crabcfgfile
-        print cmd     
+        print(cmd)
 
         output = processCmd(cmd) 
         while ('error' in output): 
             time.sleep(1.0); 
             output = processCmd(cmd) 
             if ('error' not in output):
-                print 'Submitted after retry'
-        print output
+                print('Submitted after retry')
+        print(output)
 
 # run the submitAnalyzer() as main() 
 if __name__ == "__main__": 

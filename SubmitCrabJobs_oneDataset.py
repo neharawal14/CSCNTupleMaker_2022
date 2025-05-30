@@ -30,7 +30,7 @@ def processCmd(cmd, quite = 0):
     #    print cmd
     status, output = commands.getstatusoutput(cmd)
     if (status !=0 and not quite):
-        print 'Error in processing command:\n   ['+cmd+']'
+        print('Error in processing command:\n   ['+cmd+']')
         print 'Output:\n   ['+output+'] \n'
     return output
 
