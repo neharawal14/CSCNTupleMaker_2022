@@ -3,6 +3,7 @@ rucio add-rule \
     1 \
     'rse_type=DISK&cms_type=real\tier=3\tier=0' \
     --lifetime 2592000 \
+    --grouping 'ALL' \
     --activity "User AutoApprove" \
     --ask-approval \
     --comment "Details for use, ticket reference if any"
