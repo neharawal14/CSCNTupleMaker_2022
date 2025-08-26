@@ -557,7 +557,6 @@ void UFCSCRootMaker::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
    using namespace std;
    /// Time in seconds since January 1, 1970.
    timeSecond = iEvent.time().unixTime();
-
    //Luminosity
 //   edm::Handle<LumiDetails> LumiDet;
 //   if(isFullRECO && isDATA) iEvent.getLuminosityBlock().getByToken("lumiProducer",LumiDet); 
@@ -583,6 +582,7 @@ void UFCSCRootMaker::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
      }
 
 
+  if(debug) std::cout<<" started reading event "<<std::endl;
    // get the standalone muon collection
    edm::Handle<reco::TrackCollection> saMuons;
    if(isFullRECO) iEvent.getByToken(standAloneMuonsSrc,saMuons);
@@ -595,9 +595,11 @@ void UFCSCRootMaker::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
    //iSetup.get<GlobalTrackingGeometryRecord>().get(geometryToken_, geometryHandle);
    const GlobalTrackingGeometry* geometry_ = geometryHandle.product();   
    
+  if(debug) std::cout<<" before accessing CSCRecHit2D collection "<<std::endl;
    edm::Handle<CSCRecHit2DCollection> recHits;
    if(isLocalRECO || isFullRECO) iEvent.getByToken(cscRecHitTagSrc,recHits);
 
+  if(debug) std::cout<<" after accessing CSCRecHit2D collection "<<std::endl;
    // get CSC segment collection
    edm::Handle<CSCSegmentCollection> cscSegments;
    if(isLocalRECO || isFullRECO) iEvent.getByToken(cscSegTagSrc, cscSegments);
@@ -641,6 +643,7 @@ void UFCSCRootMaker::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
    LumiSect = iEvent.id().luminosityBlock();
    BunchCrossing = iEvent.bunchCrossing();
 
+  if(debug) std::cout<<" after accessing all collections "<<std::endl;
 
    //Lumi Details
 /*   if (isDATA && isFullRECO && LumiDet.isValid()){
@@ -724,6 +727,7 @@ void UFCSCRootMaker::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
         }
         if(debug) std::cout<<" done with matching trigger objects"<<std::endl;
    nb_trigger_matched = match_count;
+
    if(addMuons && isFullRECO) doMuons(muons,saMuons,cscSegments,recHits,PV,iEvent,iSetup,geometry_,cscGeom);
 
    if(debug) std::cout<<" done with d0 Muons"<<std::endl;
@@ -1221,6 +1225,7 @@ UFCSCRootMaker::doRecHits(edm::Handle<CSCRecHit2DCollection> recHits, edm::Handl
 		     if (detId.subdetId() == MuonSubdetId::CSC) 
 		       {
 			 CSCDetId cscId(detId.rawId());
+
 			 LocalPoint rhitlocalMu = (*hit)->localPosition();
 			 
 			 //cout << saMuCounter << endl
@@ -1456,6 +1461,7 @@ UFCSCRootMaker::doSegments(edm::Handle<CSCSegmentCollection> cscSegments, edm::E
      std::vector<double> recHitRecord_layer, recHitRecord_chamber, recHitRecord_station, recHitRecord_ring, recHitRecord_endcap;
 
      CSCDetId id  = (CSCDetId)(*dSiter).cscDetId();
+
      int nRH = (*dSiter).nRecHits();
      cscSegments_ID_endcap[counter]  = id.endcap();
      cscSegments_ID_ring[counter]    = id.ring();
@@ -2446,7 +2452,6 @@ void UFCSCRootMaker::doCalibrations(const edm::EventSetup& eventSetup){
 void UFCSCRootMaker::doGasGain(const CSCWireDigiCollection& wirecltn,  const CSCStripDigiCollection&   strpcltn,
 			       const CSCRecHit2DCollection& rechitcltn) {
 
-    if(debug)  std::cout<<" Started with do Gas Gain"<<std::endl;
   int channel=0,mult,wire,idlayer;//,idchamber, layer;
   int wire_strip_rechit_present;
   std::string name,title,endcapstr;
@@ -2456,7 +2461,6 @@ void UFCSCRootMaker::doGasGain(const CSCWireDigiCollection& wirecltn,  const CSC
   
   m_single_wire_layer.clear();
   
-    if(debug)  std::cout<<" before nEvents Total"<<std::endl;
   if(nEventsTotal == 1) {
     
     // HV segments, their # and location in terms of wire groups
@@ -2561,11 +2565,9 @@ void UFCSCRootMaker::doGasGain(const CSCWireDigiCollection& wirecltn,  const CSC
     for(int wire=41;wire<=52;wire++) intvecIt->second[wire]=4;  // Segment 4
     for(int wire=53;wire<=64;wire++) intvecIt->second[wire]=5;  // Segment 5
 
-    if(debug)  std::cout<<" done with do Gas Gain"<<std::endl;
   } // end of if(nEventsAnalyzed==1)
   
   
-    if(debug)  std::cout<<" Conting wires"<<std::endl;
   // are wires, strips and rechits present?
   wire_strip_rechit_present=0;
   if(wirecltn.begin() != wirecltn.end()) wire_strip_rechit_present = wire_strip_rechit_present+1;

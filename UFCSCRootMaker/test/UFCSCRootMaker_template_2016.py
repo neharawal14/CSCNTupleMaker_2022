@@ -147,7 +147,8 @@ if isDATA:
         # This job failed, but has output with 3155 entries : 2018A : SingleMuon_Run2018A-ZMu-12Nov2019_UL2018_rsb-v1_1615.root 
 #        'root://cmsxrootd.fnal.gov//store/data/Run2018A/SingleMuon/RAW-RECO/ZMu-12Nov2019_UL2018_rsb-v1/240002/F27FD65D-3263-484D-8DDC-EB5A9B7669F6.root',
         # This job failed, but has output with 3422 entries : 2018D : SingleMuon_Run2018D-ZMu-12Nov2019_UL2018-v4_1366.root
-        'root://cmsxrootd.fnal.gov///store/data/Run2017F/SingleMuon/RAW-RECO/ZMu-09Aug2019_UL2017-v1/130000/002852F9-ACBE-3648-87C5-C4C6417FEE25.root',
+	'root://cmsxrootd.fnal.gov///store/data/Run2016B/SingleMuon/RAW-RECO/ZMu-21Feb2020_ver2_UL2016_HIPM-v1/100000/000AD1EF-A929-CC41-B832-6F55E4EADC74.root',
+        #'root://cmsxrootd.fnal.gov///store/data/Run2017F/SingleMuon/RAW-RECO/ZMu-09Aug2019_UL2017-v1/130000/002852F9-ACBE-3648-87C5-C4C6417FEE25.root',
         #'root://cmsxrootd.fnal.gov//store/data/Run2018D/SingleMuon/RAW-RECO/ZMu-12Nov2019_UL2018-v4/100000/7081838A-B066-9748-A4A8-5752A05AB332.root',
         #    'root://cmsxrootd.fnal.gov///store/data/Run2018C/SingleMuon/RAW-RECO/ZMu-12Nov2019_UL2018-v2/100000/002BB422-02B7-704F-B2CF-4724E9C1F537.root',
         #'root://cmsxrootd.fnal.gov///store/data/Run2022C/SingleMuon/RAW-RECO/ZMu-PromptReco-v1/000/355/872/00000/02f04890-4813-4992-b995-1e08f4905ab1.root', 
