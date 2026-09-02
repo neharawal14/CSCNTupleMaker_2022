@@ -8,7 +8,7 @@ cd CMSSW_12_4_6/src/
 git init
 git remote add origin git@github.com:neharawal14/CSCNTupleMaker_2022.git
 git fetch new_branch
-git checkout new_branch/dev_2022
+git checkout origin/new_branch
 git checkout -b <branch_name_you_choose> # optional, if you want to make further development it is better to use make a local branch with this command
 git submodule init
 git submodule update
