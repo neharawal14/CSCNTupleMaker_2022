@@ -26,3 +26,6 @@ git remote set-url origin new-remote-url
 3. Modify 'SubmicrabJobs.py' to include dataset name
 4. Modify 'crabConfigTemplate.py' to include the lumi mask to produce the dataset
 5. Submit using the script - makeNTuple_2016.sh
+
+## To check the HLT path
+https://cmshltinfo.app.cern.ch/path/HLT_IsoMu24_v
