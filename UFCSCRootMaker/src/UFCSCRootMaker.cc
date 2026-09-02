@@ -578,11 +578,13 @@ void UFCSCRootMaker::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
      {
        iEvent.getByToken(vertexSrc,vertex);
        if(!vertex->empty() && vertex->size() > 0) PV = &(vertex->at(0));
+       std::cout<<" in event , the primary vertex point :"<<PV->x()<<" : "<<PV->y()<<" : "<<PV->z()<<" is fake "<<PV->isFake()<<" PV ndf "<<PV->ndof()<<std::endl;
        vertex_nVertex = (int) vertex->size();
+       std::cout<<" PV number of vertexes "<<vertex_nVertex<<std::endl;
      }
 
 
-  if(debug) std::cout<<" started reading event "<<std::endl;
+  std::cout<<" started reading event "<<std::endl;
    // get the standalone muon collection
    edm::Handle<reco::TrackCollection> saMuons;
    if(isFullRECO) iEvent.getByToken(standAloneMuonsSrc,saMuons);
@@ -643,7 +645,7 @@ void UFCSCRootMaker::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
    LumiSect = iEvent.id().luminosityBlock();
    BunchCrossing = iEvent.bunchCrossing();
 
-  if(debug) std::cout<<" after accessing all collections "<<std::endl;
+   std::cout<<" after accessing all collections "<<std::endl;
 
    //Lumi Details
 /*   if (isDATA && isFullRECO && LumiDet.isValid()){
@@ -671,15 +673,15 @@ void UFCSCRootMaker::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
       passedTrigger=false; 
       //std::cout<<" in the evnt  : Number of trigger "<<std::endl; 
       unsigned int _tSize = hlt->size();
-      //std::cout<<" size of trigger "<<_tSize<<std::endl;
+      std::cout<<" size of trigger "<<_tSize<<std::endl;
       // create a string with all passing trigger names
       for (unsigned int i=0; i<_tSize; ++i) {
-	       std::string triggerName = trigNames.triggerName(i);
-         if(debug) std::cout<<" trigger Name :"<<i<<" : "<<triggerName.c_str()<<std::endl;
+	 std::string triggerName = trigNames.triggerName(i);
+         std::cout<<" trigger Name :"<<i<<" : "<<triggerName.c_str()<<std::endl;
          if(! strstr(triggerName.c_str(),"HLT_IsoMu24_v")) continue; 
-         if(debug) std::cout<<" that passed trigger :"<<i<<" : "<<triggerName.c_str()<<std::endl;
+          std::cout<<" that passed trigger :"<<i<<" : "<<triggerName.c_str()<<std::endl;
          if (hlt->accept(i)) passedTrigger=true;
-	       if(debug) std::cout<<" accepted  trigger :"<<i<<" : "<<triggerName.c_str()<<std::endl;
+	        std::cout<<" accepted  trigger :"<<i<<" : "<<triggerName.c_str()<<std::endl;
 	     }
       if(!passedTrigger) return;
       // ONly events which passed the trigger will be processed
@@ -689,8 +691,11 @@ void UFCSCRootMaker::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
      
 	//Matched trigger has different name for 2016, and 2017-2018 
       std::string filterName; 
-      if(year==2016) filterName = "hltL3crIsoL1sMu22L1f0L2f10QL3f24QL3trkIsoFiltered0p09";
-      else  filterName = "hltL3crIsoL1sSingleMu22L1f0L2f10QL3f24QL3trkIsoFiltered0p07";
+//      if(year==2016) filterName = "hltL3crIsoL1sMu22L1f0L2f10QL3f24QL3trkIsoFiltered0p09";
+//      else  filterName = "hltL3crIsoL1sSingleMu22L1f0L2f10QL3f24QL3trkIsoFiltered0p07";
+
+     if(year==2022) filterName="hltL3crIsoL1sSingleMu22L1f0L2f10QL3f24QL3trkIsoFiltered0p08";
+     //if(year==2022) filterName="hltL3crIsoL1sSingleMu22L1f0L2f10QL3f24QL3trkIsoFiltered";
       // if one directly looks at matched object, one would get all the objects which are matched 
       // For each specific object which fire the trigger there is a specific filterNames
       // In order to access the unique object which fire the trigger, we need to look for matching of a specific filter Name
@@ -704,7 +709,8 @@ void UFCSCRootMaker::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
 	    const trigger::Keys& keys = hltTriggerObject->filterKeys(filterIndex);
      	    const trigger::TriggerObjectCollection& objects = hltTriggerObject->getObjects();
             for (auto key : keys) {
-              if(debug) std::cout<<" key :"<<key<<std::endl;
+              //if(debug) std::cout<<" key :"<<key<<std::endl;
+              std::cout<<" key :"<<key<<std::endl;
                 const trigger::TriggerObject& obj = objects[key];
                 if(debug) std::cout << "Matched object to filter: pt = " << obj.pt() << " : "<<" eta "<<obj.eta()<<
                 " phi "<<obj.phi()<<" : "<<" id "<<obj.id()<<" : "<<match_count<<std::endl;
@@ -725,12 +731,14 @@ void UFCSCRootMaker::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
 		   //if(abs(id==13)) std::cout<<" passed muon pt: eta : phi :  id : mass : " << pt << " : "<<eta<<" : "<<phi<<" : "<<id<<" : "<<mass<<std::endl;
        	   }
         }
-        if(debug) std::cout<<" done with matching trigger objects"<<std::endl;
+        //if(debug) std::cout<<" done with matching trigger objects"<<std::endl;
+        std::cout<<" done with matching trigger objects"<<std::endl;
    nb_trigger_matched = match_count;
 
    if(addMuons && isFullRECO) doMuons(muons,saMuons,cscSegments,recHits,PV,iEvent,iSetup,geometry_,cscGeom);
 
-   if(debug) std::cout<<" done with d0 Muons"<<std::endl;
+   //if(debug) std::cout<<" done with d0 Muons"<<std::endl;
+    std::cout<<" done with d0 Muons"<<std::endl;
 //   if(addTracks && isFullRECO) doTracks(genTracks);
    if(addRecHits &&  (isFullRECO || isLocalRECO)) doRecHits(recHits,simHits,saMuons,muons,cscGeom,iEvent);
    if(debug) std::cout<<" done with d0 RecHits"<<std::endl;
@@ -747,17 +755,22 @@ void UFCSCRootMaker::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
        doCompTiming(*compars);
      if(debug)  std::cout<<" Going to do LCT Digis"<<std::endl;
        if(addTimeMonitoring) doLCTDigis(alcts, clcts, correlatedlcts, pCollection, cscGeom,iSetup, iEvent);
-     if(debug)  std::cout<<" Going to do Gas Gain"<<std::endl;
+     //if(debug)  std::cout<<" Going to do Gas Gain"<<std::endl;
+     std::cout<<" Going to do Gas Gain"<<std::endl;
        if(isLocalRECO) doGasGain(*wires, *strips, *recHits);
      }
-    if(debug)std::cout<<" done with add digis"<<std::endl;
+    //if(debug)std::cout<<" done with add digis"<<std::endl;
+    std::cout<<" done with add digis"<<std::endl;
    if(addRecHits && isDIGI && (isLocalRECO || isFullRECO) ) doNonAssociatedRecHits(cscSegments,cscGeom,strips);
+    std::cout<<" done with charge"<<std::endl;
    if(addCalibrations && nEventsTotal == 1) doCalibrations(iSetup);
 
+    std::cout<<" done with all steps"<<std::endl;
    //Fill the tree
 //cout << "nRHs: " << recHits2D_nRecHits2D << endl;
    if((addRecHits && recHits2D_nRecHits2D > 0 && (isFullRECO || isLocalRECO) ) /*|| !addRecHits*/) {tree->Fill();}
 
+    std::cout<<" filled tree"<<std::endl;
 
    //clear some vectors 
    cscSegments_recHitRecord_endcap.clear();
@@ -1268,9 +1281,9 @@ UFCSCRootMaker::doRecHits(edm::Handle<CSCRecHit2DCollection> recHits, edm::Handl
      //double sumsides=0.;
      //int adcsize=dRHIter->nStrips()*dRHIter->nTimeBins();
     
-      // The printouts are just to print how many strips get fired together and how many time bins are there 
-     //std::cout <<" number of strips "<<dRHIter->nStrips()<<std::endl;
-     //std::cout <<" number of time bins "<<dRHIter->nTimeBins()<<std::endl;
+     // The printouts are just to print how many strips get fired together and how many time bins are there 
+     std::cout <<" number of strips "<<dRHIter->nStrips()<<std::endl;
+     std::cout <<" number of time bins "<<dRHIter->nTimeBins()<<std::endl;
      for ( unsigned int i=0; i< dRHIter->nStrips(); i++) {
        for ( unsigned int j=0; j< dRHIter->nTimeBins()-1; j++) {
         
@@ -1759,9 +1772,12 @@ void UFCSCRootMaker::doNonAssociatedRecHits(edm::Handle<CSCSegmentCollection> cs
     for ( unsigned int i=0; i< (iter->second).nStrips(); i++) {
       for ( unsigned int j=0; j< (iter->second).nTimeBins()-1; j++) {
 	rHSumQ+=(iter->second).adcs(i,j);
+        std::cout<<" the strip number "<<i<<" the time bin "<<j<<" charge :"<<rHSumQ<<std::endl;
 	if (i!=1) sumsides+=(iter->second).adcs(i,j);
       }
     }
+    //double tmp_charge = (iter->second).adcs(2,1);
+    //    std::cout<<" after 4th strip charge  "<<tmp_charge<<std::endl;
     
     double rHratioQ = sumsides/rHSumQ;
     if (adcsize != 12) rHratioQ = -99;
@@ -2396,7 +2412,7 @@ void UFCSCRootMaker::doLCTDigis( edm::Handle<CSCALCTDigiCollection> alcts, edm::
 // ==============================================
 
 void UFCSCRootMaker::doCalibrations(const edm::EventSetup& eventSetup){
-
+  std::cout<<" in calibration step "<<std::endl;
   // Only do this for the first event
   // get the gains
 
